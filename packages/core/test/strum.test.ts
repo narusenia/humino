@@ -70,6 +70,23 @@ describe("applyStrum", () => {
     expect(work[0]!.startTime).toBeCloseTo(0.55);
   });
 
+  it("lets notes ring when the next chord does not reuse their string", () => {
+    const held: Note[] = [40, 47].map((pitch) => ({ pitch, startTime: 0, duration: 4, velocity: 100 }));
+    const high: Note[] = [64, 67, 71].map((pitch) => ({ pitch, startTime: 0.25, duration: 0.25, velocity: 100 }));
+    const { work } = run([...held, ...high], { overlap: 5 });
+    expect(work[0]!.startTime + work[0]!.duration).toBeCloseTo(4);
+    expect(work[1]!.startTime + work[1]!.duration).toBeCloseTo(4);
+  });
+
+  it("keeps each note's own end instead of the longest one", () => {
+    const notes: Note[] = [
+      { pitch: 40, startTime: 0, duration: 2, velocity: 100 },
+      { pitch: 52, startTime: 0, duration: 0.5, velocity: 100 },
+    ];
+    const { work } = run(notes);
+    expect(work[1]!.startTime + work[1]!.duration).toBeCloseTo(0.5);
+  });
+
   it("cuts the previous chord just after the next one starts", () => {
     const notes = [...chordAt(0, 4), ...chordAt(1)];
     const { work } = run(notes, { overlap: 5 });

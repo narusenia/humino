@@ -91,10 +91,18 @@ export function applyStrum(work: Note[], a: Analysis, target: boolean[], p: Stru
     }
 
     const base = work[g.idx[0]!]!.startTime;
-    const chordEnd = Math.max(...g.idx.map((i) => work[i]!.startTime + work[i]!.duration));
+    // The next stroke only stops strings it plays again; a pitch within a 4th is
+    // probably on the same string. Everything else rings to its own end.
     const next = a.groups.slice(gi + 1).find(isChord);
     const cut = next ? work[next.idx[0]!]!.startTime + toBeats(p.overlap) : Infinity;
-    const end = Math.min(chordEnd, cut);
+    const nextPitches = next ? next.idx.map((i) => work[i]!.pitch) : [];
+    const endOf = new Map(
+      g.idx.map((i) => {
+        const n = work[i]!;
+        const sameString = nextPitches.some((q) => Math.abs(q - n.pitch) <= 4);
+        return [i, Math.min(n.startTime + n.duration, sameString ? cut : Infinity)];
+      }),
+    );
     const speed = (ov?.speed ?? (dir === "down" ? p.downSpeed : p.upSpeed)) * (1 + (jitter * p.speedJitter) / 100);
     const last = Math.max(1, order.length - 1);
 
@@ -102,7 +110,7 @@ export function applyStrum(work: Note[], a: Analysis, target: boolean[], p: Stru
       const n = work[i]!;
       const offset = (speed * k) / last - (p.anchor === "center" ? speed / 2 : 0);
       n.startTime = Math.max(0, base + toBeats(offset));
-      n.duration = Math.max(MIN_DURATION, end - n.startTime);
+      n.duration = Math.max(MIN_DURATION, endOf.get(i)! - n.startTime);
       n.velocity = clampVelocity((n.velocity ?? DEFAULT_VELOCITY) - (p.taper * k) / last);
     });
   });
