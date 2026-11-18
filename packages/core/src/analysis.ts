@@ -43,7 +43,10 @@ export type Analysis = {
 };
 
 export function analyze(notes: readonly Note[], beatsPerBar = 4): Analysis {
-  const triplet = notes.some((n) => !near(n.startTime * 4) && near(n.startTime * 6));
+  // Majority vote, so one triplet fill does not turn a straight clip (and its swing) off.
+  const tripletOnly = notes.filter((n) => !near(n.startTime * 4) && near(n.startTime * 6)).length;
+  const straightOnly = notes.filter((n) => near(n.startTime * 4) && !near(n.startTime * 3)).length;
+  const triplet = tripletOnly > straightOnly;
   const stepsPerBeat = triplet ? 3 : 4;
   // shortcut: one bar of steps assumes 4/4, revisit with other meters (design.md 未決事項)
   const stepsPerBar = stepsPerBeat * 4;

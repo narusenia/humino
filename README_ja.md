@@ -32,14 +32,14 @@ MIDI クリップを右クリックして、次のどれかを選びます。
 
 `humino.amxd` は Live 12 Suite の MIDI Tools で使う Transformation（Max for Live）です。ピアノロールで選んだノートにかかり、つまみを回すとその場でかけ直すので、聴きながら調整できます。
 
-`humino.amxd` を `User Library/MIDI Tools/Max Transformations/` に置き、クリップビューの Transform タブで humino を選びます。パネルにあるのは Mode、プリセット、Drift、Jitter、Vel ±、Swing、Strum、Legato です。Groove の表やそのほかの設定、手での修正は Extension 版だけで使えます。
+`humino.amxd` を `User Library/MIDI Tools/Max Transformations/` に置き、クリップビューの Transform タブで humino を選びます。パネルにあるのは Mode、プリセット、Drift、Jitter、Spread、Vel ±、Swing、Strum、Legato です。Groove の表やそのほかの設定、手での修正は Extension 版だけで使えます。
 
 ## 機能
 
 ### v1
 
 - **Groove**：16 ステップの表で、ステップごとのタイミングとベロシティのずれを決めます。Swing も使えます。
-- **Humanize**：ゆっくりしたタイミングの揺れ（Drift）とノートごとのずれ（Jitter）を ms で指定します。ベロシティの揺れ、和音の中の音量バランス、レガート、ノート長の揺れも調整できます。
+- **Humanize**：ゆっくりしたタイミングの揺れ（Drift）と和音ごとのずれ（Jitter）を ms で指定します。Spread で和音の音を 1 つずつずらすこともでき、0 にすると和音はそろって動きます。ベロシティの揺れ、和音の中の音量バランス、レガート、ノート長の揺れも調整できます。
 - **Strum**（ギター）：8 分か 16 分で振り続ける腕の動きに合わせて、ダウンとアップを自動で決めます。アップでは低音弦を省きます。速さは ms で指定します。
 - **疑似ペダル**（ピアノ）：小節ごと、またはコードごとにノートを伸ばします。Extensions SDK では CC64 を書けないため、ノートの長さで代わりにします。
 

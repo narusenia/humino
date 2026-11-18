@@ -14,7 +14,7 @@ Extension 版はクリップを右クリックしてダイアログを開く必�
 - 元のノートは保存しない。MIDI Tools は適用中、つまみを動かすたびに最初のノートを送り直すので、変換が重ならない
 - つまみが動いたら `live.miditool.in` に bang を送り、その場でかけ直す
 - テンポはコンテキストに無いので `LiveAPI("live_set")` から読む。シードはコンテキストの `seed` を使う
-- パネルは 152×147 に収まる分だけにする。Mode、プリセット、Drift、Jitter、Vel ±、Swing、Strum、Legato。細かい設定と手での上書きは Extension 版で行う
+- パネルは 152×147 に収まる分だけにする。Mode、プリセット、Drift、Jitter、Spread、Vel ±、Swing、Strum、Legato。細かい設定と手での上書きは Extension 版で行う
 - デバイスを読み込んだ直後の 1 秒は、つまみの値を受けてもかけ直さない
 
 ## 結果

@@ -27,6 +27,13 @@ describe("analyze", () => {
     expect(a.triplet).toBe(false);
     expect(a.groups.map((g) => g.step)).toEqual([0, 1, 7, 2]);
   });
+  it("keeps a straight clip straight despite one triplet fill", () => {
+    const eighths = [0, 0.5, 1, 1.5, 2, 2.5].map((t) => ({ pitch: 60, startTime: t, duration: 0.25 }));
+    const a = analyze([...eighths, { pitch: 62, startTime: 3 + 1 / 3, duration: 0.25 }]);
+    expect(a.triplet).toBe(false);
+    expect(a.groups[1]!.step).toBe(2);
+  });
+
   it("detects triplet clips", () => {
     const a = analyze([n(0), n(1 / 3), n(2 / 3)]);
     expect(a.triplet).toBe(true);
