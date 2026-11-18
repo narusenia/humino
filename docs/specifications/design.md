@@ -136,7 +136,7 @@ Drift は時間に対する平均回帰ランダムウォーク（Ornstein–Uhl
 | Piano | Pop Tight | jitter 2 ms、groove のアクセントを 1.5 倍、pedal off |
 | 共通 | Subtle | すべての量を初期値の半分 |
 
-ユーザープリセットは `storageDirectory/presets.json` に保存する。Re-apply は最後に使った設定を `storageDirectory/last.json` から読み、シード値だけ新しくする。
+ヘッダーのプリセット名か ☰ で一覧を開く。一覧は Init（すべて初期値に戻す。モードと手での変更は残す）、組み込み、ユーザー（× で削除）の順に並べ、下に名前を付けて保存する欄を置く。◂ ▸ でも順に切り替えられる。ユーザープリセットは `storageDirectory/presets.json` に保存する。Re-apply は最後に使った設定を `storageDirectory/last.json` から読み、シード値だけ新しくする。
 
 ## UI（ADR-0008〜0011）
 
