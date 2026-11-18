@@ -1,0 +1,50 @@
+// SPDX-License-Identifier: MIT
+
+import { describe, expect, it } from "vitest";
+import { analyze, metricLevel, msToBeats, targetGroups } from "../src/analysis.js";
+import type { Note } from "../src/types.js";
+
+const n = (startTime: number, pitch = 60, extra: Partial<Note> = {}): Note => ({ pitch, startTime, duration: 0.25, ...extra });
+
+describe("metricLevel", () => {
+  it("ranks positions in 4/4", () => {
+    expect([0, 2, 1, 3, 0.5, 0.25, 4].map((s) => metricLevel(s, 4, false))).toEqual([0, 1, 2, 2, 3, 4, 0]);
+  });
+  it("treats triplet off-beats as level 3", () => {
+    expect(metricLevel(1 / 3, 4, true)).toBe(3);
+    expect(metricLevel(1 / 6, 4, true)).toBe(4);
+  });
+});
+
+describe("analyze", () => {
+  it("groups chords and sorts by pitch", () => {
+    const a = analyze([n(0, 64), n(0, 48), n(0.004, 55), n(1, 60)]);
+    expect(a.groups.map((g) => g.idx)).toEqual([[1, 2, 0], [3]]);
+    expect(a.groupOf).toEqual([0, 0, 0, 1]);
+  });
+  it("finds 16th steps", () => {
+    const a = analyze([n(0), n(0.25), n(1.75), n(4.5)]);
+    expect(a.triplet).toBe(false);
+    expect(a.groups.map((g) => g.step)).toEqual([0, 1, 7, 2]);
+  });
+  it("detects triplet clips", () => {
+    const a = analyze([n(0), n(1 / 3), n(2 / 3)]);
+    expect(a.triplet).toBe(true);
+    expect(a.groups.map((g) => g.step)).toEqual([0, 1, 2]);
+  });
+});
+
+describe("targetGroups", () => {
+  it("widens a selection to the whole chord", () => {
+    const notes = [n(0, 48), n(0, 52, { selected: true }), n(1)];
+    expect(targetGroups(notes, analyze(notes))).toEqual([true, false]);
+  });
+  it("targets everything when nothing is selected", () => {
+    const notes = [n(0), n(1)];
+    expect(targetGroups(notes, analyze(notes))).toEqual([true, true]);
+  });
+});
+
+it("msToBeats", () => {
+  expect(msToBeats(500, 120)).toBe(1);
+});
