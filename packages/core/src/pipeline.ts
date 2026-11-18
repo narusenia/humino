@@ -21,7 +21,7 @@ export type Params = {
 };
 
 export const DEFAULT_PARAMS: Params = {
-  mode: "guitar",
+  mode: "piano",
   groove: DEFAULT_GROOVE,
   humanize: DEFAULT_HUMANIZE,
   strum: DEFAULT_STRUM,
