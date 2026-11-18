@@ -476,17 +476,18 @@ const chordOf = (i: number) => last!.analysis.groups[last!.analysis.groupOf[i]!]
 /** Re-voices when the settings voicing depends on change; the selection goes back to the clip's. */
 function rebase() {
   const key = JSON.stringify([params.mode, params.voicing, params.chordWindow]);
-  if (key === baseKey) return;
+  if (key === baseKey) return false;
   const first = !baseKey;
   baseKey = key;
   base = voicedBase(input.notes, params, input.tempo);
   selected = base.map((n) => !!n.selected);
-  if (!first) renderSelbar();
+  return !first;
 }
 
 function compute() {
-  rebase();
+  const rebased = rebase();
   last = process(notesWithSelection(), params, { tempo: input.tempo, seed, clipEnd: input.clipEnd, ...(input.scale && { scale: input.scale }) }, overrides);
+  if (rebased) renderSelbar(); // after `last` matches the new notes
   return last;
 }
 
