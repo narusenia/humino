@@ -12,7 +12,7 @@ export const PAGES = ["Hum", "Feel", "Str", "Con"];
 type Base = { key: string; label: string; tip: string; page: number; x: number; y: number; get: (p: Params) => number; set: (p: Params, v: number) => void };
 export type Control =
   | (Base & { kind: "dial"; max: number; unit: number })
-  | (Base & { kind: "tab"; options: string[]; w: number });
+  | (Base & { kind: "tab"; options: string[]; w: number; /** live.menu (a drop-down) instead of live.tab. */ menu?: boolean });
 
 const UNIT = { int: 0, ms: 2, pct: 5 };
 // Header row (page + mode) is y 2-17; two dial rows with a gap so a value never
@@ -24,9 +24,9 @@ export const TAB_Y = 129;
 const dial = (key: string, label: string, tip: string, page: number, slot: number, max: number, unit: number, get: Base["get"], set: Base["set"]): Control => ({
   kind: "dial", key, label, tip, page, x: COL[slot % 3]!, y: ROW[Math.floor(slot / 3)]!, max, unit, get, set,
 });
-/** `x` / `w` place the tab; it sits in the tab row unless `y` is given. */
-const tab = <T>(key: string, label: string, tip: string, page: number, [x, w, y = TAB_Y]: [number, number, number?], values: readonly T[], names: string[], get: (p: Params) => T, set: (p: Params, v: T) => void): Control => ({
-  kind: "tab", key, label, tip, page, x, y, w, options: names,
+/** `x` / `w` place the tab; it sits in the tab row unless `y` is given. `menu` makes it a drop-down. */
+const tab = <T>(key: string, label: string, tip: string, page: number, [x, w, y = TAB_Y, menu = false]: [number, number, number?, boolean?], values: readonly T[], names: string[], get: (p: Params) => T, set: (p: Params, v: T) => void): Control => ({
+  kind: "tab", key, label, tip, page, x, y, w, options: names, ...(menu && { menu }),
   get: (p) => Math.max(0, values.indexOf(get(p))),
   set: (p, i) => set(p, values[i] ?? values[0]!),
 });
@@ -63,9 +63,10 @@ export const CONTROLS: Control[] = [
   dial("grace", "Grace", "Chance of a grace note just before the top note.", 3, 3, 100, UNIT.pct, (p) => p.connect.grace, (p, v) => (p.connect.grace = v)),
   dial("gracesteps", "Gr Steps", "Grace notes climbing into the top note. Fewer when there is no room.", 3, 4, 6, UNIT.int, (p) => p.connect.graceSteps, (p, v) => (p.connect.graceSteps = Math.max(1, Math.round(v)))),
   dial("cvel", "Velocity", "Velocity of the added notes, as a % of the bass note they leave or the top note they lead into.", 3, 5, 100, UNIT.pct, (p) => p.connect.velocity, (p, v) => (p.connect.velocity = v)),
-  tab("connect", "Connect", "Adds notes that lead from one chord to the next. Off by default.", 3, [4, 34], [false, true] as const, ["Off", "On"], (p) => p.connect.on, (p, v) => (p.connect.on = v)),
-  tab("rundir", "Run From", "Side the run comes from: Auto follows the previous bass note, Up climbs from below, Dn comes down from above.", 3, [42, 50], ["auto", "up", "down"] as const, ["A", "Up", "Dn"], (p) => p.connect.runDirection, (p, v) => (p.connect.runDirection = v)),
-  tab("gracelen", "Grace Len", "Length of each grace note: 1/64, 1/32 or 1/16 of a beat.", 3, [96, 52], [1 / 64, 1 / 32, 1 / 16] as const, ["64", "32", "16"], (p) => p.connect.graceLength, (p, v) => (p.connect.graceLength = v)),
+  tab("connect", "Connect", "Adds notes that lead from one chord to the next. Off by default.", 3, [4, 30], [false, true] as const, ["Off", "On"], (p) => p.connect.on, (p, v) => (p.connect.on = v)),
+  tab("rundir", "Run From", "Side the run comes from: Auto follows the previous bass note, Up climbs from below, Down comes from above.", 3, [37, 36, TAB_Y, true], ["auto", "up", "down"] as const, ["Auto", "Up", "Down"], (p) => p.connect.runDirection, (p, v) => (p.connect.runDirection = v)),
+  tab("gracelen", "Grace Len", "Length of each grace note: 1/64, 1/32 or 1/16 of a beat.", 3, [76, 34, TAB_Y, true], [1 / 64, 1 / 32, 1 / 16] as const, ["1/64", "1/32", "1/16"], (p) => p.connect.graceLength, (p, v) => (p.connect.graceLength = v)),
+  tab("gracescale", "Grace Scale", "In: grace notes step through Live's scale. Out: by semitones, leaving the scale.", 3, [113, 35, TAB_Y, true], ["in", "out"] as const, ["In", "Out"], (p) => p.connect.graceScale, (p, v) => (p.connect.graceScale = v)),
 ];
 
 // ---------------------------------------------------------------- devices

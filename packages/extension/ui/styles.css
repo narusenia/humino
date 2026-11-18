@@ -165,6 +165,10 @@ details.advanced summary { cursor: pointer; color: var(--text-dim); font-size: 1
 .count { display: flex; align-items: center; gap: 8px; color: var(--text-dim); }
 .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
 
+.lane { display: flex; flex-wrap: wrap; gap: 8px 22px; align-items: flex-start; }
+.lane + .lane { margin-top: 5px; padding-top: 5px; border-top: 1px solid var(--line); }
+.lane-name { width: 52px; padding-top: 2px; font-size: 12px; color: var(--text-dim); }
+.scale-name { margin-top: 8px; font-size: 15px; color: var(--text); white-space: nowrap; }
 .fixed { display: flex; align-items: center; gap: 10px; margin-top: 14px; }
 .fixed button { padding: 3px 10px; font-size: 12px; }
 .fixed button:disabled { opacity: 0.35; cursor: default; }

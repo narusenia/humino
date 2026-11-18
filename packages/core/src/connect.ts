@@ -24,6 +24,8 @@ export type ConnectParams = {
   graceLength: number;
   /** 1..6 grace notes climbing into the top note. */
   graceSteps: number;
+  /** "in": grace notes step through the scale; "out": by semitones, leaving the scale. */
+  graceScale: "in" | "out";
   /** 0..100 %, velocity of the added notes against the note they lead from (bass) or into (grace). */
   velocity: number;
 };
@@ -37,11 +39,12 @@ export const DEFAULT_CONNECT: ConnectParams = {
   grace: 20,
   graceLength: 1 / 32,
   graceSteps: 1,
+  graceScale: "in",
   velocity: 80,
 };
 
 /** Live's current scale; absent when Scale Mode is off. */
-export type Scale = { root: number; intervals: number[] };
+export type Scale = { root: number; intervals: number[]; /** For display only. */ name?: string };
 
 /** One run / passing note is a 16th. */
 const STEP = 1 / 4;
@@ -90,7 +93,9 @@ export function applyConnect(
     if (!target[gi - 1] || !target[gi]) continue;
     const prev = a.groups[gi - 1]!.idx.filter((i) => !dropped.has(i));
     const next = a.groups[gi]!.idx.filter((i) => !dropped.has(i));
-    if (!prev.length || !next.length) continue;
+    // Chord → chord or single note → single note only: a lone low note after a chord is not
+    // the chord's top voice, and grace / trimming it would cut the chord's top note.
+    if (!prev.length || !next.length || (prev.length > 1) !== (next.length > 1)) continue;
 
     // Bass: idx is sorted by pitch, so [0] is the lowest sounding note.
     const pb = work[prev[0]!]!;
@@ -124,8 +129,9 @@ export function applyConnect(
     if (rGrace < p.grace / 100 && !(bassAdded && next.length === 1) && topGap >= MIN_GAP) {
       // as many as fit in half the gap, climbing a scale step (or semitone) at a time
       const n = Math.max(1, Math.min(Math.round(p.graceSteps), Math.floor(topGap / 2 / p.graceLength + 1e-9)));
-      const pitches = [below(nt.pitch, scale)];
-      while (pitches.length < n) pitches.unshift(below(pitches[0]!, scale));
+      const gs = p.graceScale === "in" ? scale : undefined;
+      const pitches = [below(nt.pitch, gs)];
+      while (pitches.length < n) pitches.unshift(below(pitches[0]!, gs));
       const start = nt.startTime - n * p.graceLength;
       trimTo(pt, start);
       const velocity = clampVelocity(((nt.velocity ?? DEFAULT_VELOCITY) * p.velocity) / 100);

@@ -54,6 +54,18 @@ describe("connect", () => {
     expect(r.final[2]!.duration).toBe(2 - 1 / 32);
     const three = process(chords, params({ grace: 100, graceLength: 1 / 16, graceSteps: 3 }), ctx).added;
     expect(three.map((n) => [n.pitch, n.startTime])).toEqual([[67, 2 - 3 / 16], [69, 2 - 2 / 16], [71, 2 - 1 / 16]]);
+    const out = process(chords, params({ grace: 100, graceLength: 1 / 16, graceSteps: 3, graceScale: "out" }), ctx).added;
+    expect(out.map((n) => n.pitch)).toEqual([69, 70, 71]);
+  });
+
+  it("leaves a chord alone when a single note follows it", () => {
+    const notes: Note[] = [
+      ...[48, 64, 72].map((pitch) => ({ pitch, startTime: 0, duration: 2, velocity: 100 })),
+      { pitch: 43, startTime: 2, duration: 2, velocity: 100 },
+    ];
+    const r = process(notes, params({ grace: 100, chromatic: 100 }), ctx);
+    expect(r.added).toEqual([]);
+    expect(r.final[2]!.duration).toBe(2);
   });
 
   it("only connects targeted groups", () => {

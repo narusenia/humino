@@ -23,7 +23,7 @@ type ToolNote = {
 type ToolInput = {
   notes?: ToolNote[];
   clip?: { time_selection_end?: number; last_note_end?: number };
-  scale?: { scale_mode?: number; root_note?: number; scale_intervals?: number[] };
+  scale?: { scale_mode?: number; root_note?: number; scale_intervals?: number[]; scale_name?: string };
   seed?: number;
 };
 
@@ -52,15 +52,25 @@ const tempo = () => {
 /** Live's scale from the tool's context, else from the Live set; undefined when Scale Mode is off. */
 const scale = (input: ToolInput): Scale | undefined => {
   const s = input.scale;
-  if (s?.scale_mode !== undefined) return s.scale_mode ? { root: s.root_note ?? 0, intervals: s.scale_intervals ?? [] } : undefined;
+  if (s?.scale_mode !== undefined)
+    return s.scale_mode ? { root: s.root_note ?? 0, intervals: s.scale_intervals ?? [], ...(s.scale_name && { name: s.scale_name }) } : undefined;
   try {
     const set = new LiveAPI("live_set");
     if (!Number(set.get("scale_mode")[0])) return undefined;
-    return { root: Number(set.get("root_note")[0]), intervals: set.get("scale_intervals").map(Number) };
+    return { root: Number(set.get("root_note")[0]), intervals: set.get("scale_intervals").map(Number), name: String(set.get("scale_name")[0] ?? "") };
   } catch {
     return undefined; // no scale: Connect falls back to chromatic runs
   }
 };
+
+const NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+/** Shows the scale on the panel; the full device has 48 px, so long names shrink ("Harmonic Minor" → "HarM"). */
+function showScale(s: Scale | undefined) {
+  if (!CONTROLS.some((c) => c.key === "connect")) return;
+  let text = s ? `${NAMES[s.root % 12]} ${s.name ?? ""}`.trim() : "No scale";
+  if (full && text.length > 8 && s?.name) text = `${NAMES[s.root % 12]} ${s.name.split(" ").map((w, i) => (i ? w[0] : w.slice(0, 3))).join("")}`;
+  outlet(3, "script", "send", "scale", "set", full ? text : `Scale: ${text}`);
+}
 
 const toCore = (n: ToolNote): Note => ({
   pitch: n.pitch,
@@ -77,7 +87,8 @@ const toCore = (n: ToolNote): Note => ({
 g.msg_dictionary = (input: ToolInput) => {
   const notes = input.notes ?? [];
   const clipEnd = input.clip?.time_selection_end ?? input.clip?.last_note_end;
-  const sc = params.connect.on ? scale(input) : undefined;
+  const sc = scale(input);
+  showScale(sc);
   const r = process(notes.map(toCore), params, {
     tempo: tempo(),
     seed: input.seed ?? 0,
@@ -131,5 +142,11 @@ g.param = (key: string, v: number) => {
 /** Page tab: hide the other pages' controls through [thispatcher]. */
 g.page = (i: number) => {
   for (const c of CONTROLS) outlet(3, "script", c.page === i ? "show" : "hide", c.key);
-  if (full) outlet(3, "script", i === 0 ? "show" : "hide", "preset");
+  if (full) {
+    outlet(3, "script", i === 0 ? "show" : "hide", "preset");
+    // Connect does not depend on the mode, so its page shows the scale in the mode's place.
+    outlet(3, "script", i === 3 ? "hide" : "show", "mode");
+    outlet(3, "script", i === 3 ? "show" : "hide", "scale");
+  }
+  if (i === 3 || !full) showScale(scale({}));
 };

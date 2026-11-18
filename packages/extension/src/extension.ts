@@ -22,7 +22,7 @@ export function activate(activation: ActivationContext) {
   };
   const state = (clip: MidiClip<"1.0.0">) => {
     const song = context.application.song;
-    return readClip(clip, song.tempo, song.scaleMode ? { root: song.rootNote, intervals: song.scaleIntervals } : undefined, store);
+    return readClip(clip, song.tempo, song.scaleMode ? { root: song.rootNote, intervals: song.scaleIntervals, name: song.scaleName } : undefined, store);
   };
 
   const commands: [id: string, title: string, run: (clip: MidiClip<"1.0.0">) => Promise<void> | void][] = [

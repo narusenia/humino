@@ -126,6 +126,7 @@ const CONNECT: Def[] = [
   { kind: "num", section: "connect", key: "grace", label: "grace", min: 0, max: 100, step: 1, unit: "%", tip: ["Chance of a grace note just before the top note", "最高音の直前に前打音を入れる確率"] },
   { kind: "num", section: "connect", key: "velocity", label: "velocity", min: 0, max: 100, step: 1, unit: "%", tip: ["Velocity of the added notes, as a % of the bass note they leave or the top note they lead into", "足した音のベロシティ。前のベース、または次の最高音に対する %"] },
   { kind: "num", section: "connect", key: "graceSteps", label: "grace steps", min: 1, max: 6, step: 1, tip: ["Grace notes climbing into the top note; fewer when there is no room", "最高音へ上がっていく前打音の数。間が足りなければ減らす"] },
+  { kind: "choice", section: "connect", key: "graceScale", label: "grace notes", options: [["in", "in scale"], ["out", "chromatic"]], tip: ["Grace notes step through the scale, or by semitones outside it", "前打音をスケール音で上げるか、スケール外の半音も使うか"] },
   { kind: "choice", section: "connect", key: "graceLength", label: "grace len", options: [[1 / 64, "1/64"], [1 / 32, "1/32"], [1 / 16, "1/16"]], tip: ["Grace note length in beats", "前打音の長さ（拍）"] },
 ];
 
@@ -315,8 +316,26 @@ function renderParams() {
   main.style.setProperty("--section", `var(${STAGE_COLOR[tab]})`);
   if (tab === "groove") main.replaceChildren(grooveTable());
   else if (tab === "humanize") main.replaceChildren(...group(HUMANIZE));
-  else if (tab === "connect") main.replaceChildren(...group(CONNECT));
+  else if (tab === "connect") main.replaceChildren(...connectLanes());
   else main.replaceChildren(...group(STRUM), fixedRow());
+}
+
+/** Connect in three lanes: switch and shared settings, the bass approach, the grace notes. */
+function connectLanes() {
+  const pick = (...keys: string[]) => keys.map((k) => control(CONNECT.find((c) => c.key === k)!));
+  const lane = (name: string, ...items: HTMLElement[]) => h("div", { className: "lane" }, h("span", { className: "lane-name" }, name), ...items);
+  const s = input.scale;
+  const scale = h(
+    "div",
+    { className: "param", title: ja ? "Live の Scale Mode のスケール。経過音と in scale の前打音が使う" : "Live's Scale Mode scale, used by passing tones and in-scale grace notes" },
+    h("span", { className: "label" }, ja ? "スケール" : "scale"),
+    h("span", { className: "scale-name" }, s ? `${NAMES[s.root % 12]} ${s.name ?? ""}`.trim() : ja ? "Scale Mode オフ" : "Scale Mode off"),
+  );
+  return [
+    lane("", ...pick("on", "velocity"), scale),
+    lane(ja ? "ベース" : "bass", ...pick("chromatic", "steps", "runDirection", "passing")),
+    lane(ja ? "前打音" : "grace", ...pick("grace", "graceSteps", "graceLength", "graceScale")),
+  ];
 }
 
 /** Count of hand edits (chord and note overrides) with a way to drop them all. */

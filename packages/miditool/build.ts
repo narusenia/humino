@@ -71,9 +71,9 @@ function build(dev: Device) {
     valueof({ parameter_enum: names, parameter_longname: longname, parameter_shortname: short, parameter_type: 2, parameter_mmax: names.length - 1, parameter_initial: [initial], parameter_initial_enable: 1 });
   /** Live's Info View text for a control. */
   const info = (c: { label: string; tip: string }) => ({ annotation: c.tip, annotation_name: c.label });
-  const tabBox = (id: string, rect: number[], px: number, py: number, hidden: boolean, param: object) =>
+  const tabBox = (id: string, rect: number[], px: number, py: number, hidden: boolean, param: object, menu = false) =>
     boxes.push({
-      id, maxclass: "live.tab", varname: id, numinlets: 1, numoutlets: 3, outlettype: ["", "", "float"], parameter_enable: 1,
+      id, maxclass: menu ? "live.menu" : "live.tab", varname: id, numinlets: 1, numoutlets: 3, outlettype: ["", "", "float"], parameter_enable: 1,
       num_lines_patching: 1, num_lines_presentation: 1, patching_rect: [px, py, rect[2], rect[3]], presentation: 1, presentation_rect: rect,
       ...(hidden && { hidden: 1 }), ...param,
     });
@@ -111,11 +111,19 @@ function build(dev: Device) {
     wire("p-page", 0, "code", 0);
   }
 
+  // Live's scale, filled in by humino.ts (Con page of the full device, top row of Connect)
+  if (CONTROLS.some((c) => c.key === "connect"))
+    boxes.push({
+      id: "scale", maxclass: "live.comment", varname: "scale", text: full ? "Scale" : "Scale: –", numinlets: 1, numoutlets: 0, textjustification: full ? 2 : 0,
+      patching_rect: [1000, 10, 100, 18], presentation: 1, presentation_rect: full ? [100, 2, 48, 15] : [4, 2, 144, 15], ...(full && { hidden: 1 }),
+      ...info({ label: "Scale", tip: "Live's current scale (Scale Mode). Passing tones and In grace notes use it." }),
+    });
+
   CONTROLS.forEach((c, k) => {
     const px = 640 + (k % 8) * 70;
     const py = 80 + Math.floor(k / 8) * 120;
     const hidden = c.page !== 0;
-    if (c.kind === "tab") tabBox(c.key, [c.x, c.y, c.w, 15], px, py, hidden, { ...enumParam(c.label, c.label, c.options, c.get(d)), ...info(c) });
+    if (c.kind === "tab") tabBox(c.key, [c.x, c.y, c.w, 15], px, py, hidden, { ...enumParam(c.label, c.label, c.options, c.get(d)), ...info(c) }, c.menu);
     else
       boxes.push({
         id: c.key, maxclass: "live.dial", varname: c.key, numinlets: 1, numoutlets: 2, outlettype: ["", "float"], parameter_enable: 1,
