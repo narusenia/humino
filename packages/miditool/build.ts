@@ -117,7 +117,8 @@ function build(dev: Device) {
   if (dev.view) {
     const text = `globalThis.HUMINO_DEVICE = ${JSON.stringify(dev.id)};\n${viewJs}`;
     boxes.push({
-      id: "view", maxclass: "v8ui", filename: "humino-view.js", numinlets: 1, numoutlets: 1, outlettype: [""], parameter_enable: 0,
+      // embed is a box attribute too; without it Max looks for humino-view.js on disk
+      id: "view", maxclass: "v8ui", embed: 1, numinlets: 1, numoutlets: 1, outlettype: [""], parameter_enable: 0,
       patching_rect: [1000, 200, 144, 120], presentation: 1, presentation_rect: dev.view,
       textfile: { filename: "humino-view.js", flags: 0, embed: 1, autowatch: 0, text },
     });

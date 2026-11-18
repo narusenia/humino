@@ -69,6 +69,14 @@ const size = (): [number, number] => {
 };
 
 g.paint = () => {
+  try {
+    draw();
+  } catch (e) {
+    post(`humino view: ${String(e)}\n`); // shows in the Max window instead of a blank panel
+  }
+};
+
+function draw() {
   const [w, h] = size();
   const bg = color("live_lcd_bg", [0.07, 0.07, 0.07, 1]);
   const frame = color("live_lcd_frame", [0.25, 0.25, 0.25, 1]);
@@ -126,7 +134,7 @@ g.paint = () => {
     mgraphics.rectangle(...bar(n));
     mgraphics.fill();
   }
-};
+}
 
 // ---------------------------------------------------------------- messages and mouse
 
