@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 import { describe, expect, it } from "vitest";
-import { DEFAULT_PARAMS, DEFAULT_VOICING, process, voice, type Note, type Params } from "../src/index.js";
+import { DEFAULT_PARAMS, DEFAULT_VOICING, process, voice, voicedBase, type Note, type Params } from "../src/index.js";
 
 const chord = (t: number, ...pitches: number[]): Note[] => pitches.map((pitch) => ({ pitch, startTime: t, duration: 1, velocity: 90 }));
 const on = { ...DEFAULT_VOICING, on: true };
@@ -46,5 +46,15 @@ describe("voice", () => {
     const byTime = [...r.notes].sort((a, b) => a.startTime - b.startTime);
     expect(byTime.map((n) => n.string)).toEqual([5, 4, 3, 2, 1]); // a downstroke from the 5th string
     expect(shape(byTime)).toContain("5:48");
+  });
+});
+
+describe("voicedBase", () => {
+  it("voices only in guitar mode with voicing on", () => {
+    const notes = chord(0, 60, 64, 67);
+    const p = (mode: Params["mode"], v: boolean): Params => ({ ...DEFAULT_PARAMS, mode, voicing: { ...DEFAULT_VOICING, on: v } });
+    expect(voicedBase(notes, p("guitar", false), 120)).toBe(notes);
+    expect(voicedBase(notes, p("piano", true), 120)).toBe(notes);
+    expect(voicedBase(notes, p("guitar", true), 120).every((n) => n.string)).toBe(true);
   });
 });

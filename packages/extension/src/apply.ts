@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 import type { MidiClip, NoteDescription } from "@ableton-extensions/sdk";
-import { analyze, chordKey, chordWindowBeats, hashNotes, process, targetGroups, type Direction, type Note, type Overrides, type Params, type Scale } from "@humino/core";
+import { analyze, chordKey, chordWindowBeats, hashNotes, process, targetGroups, voicedBase, type Direction, type Note, type Overrides, type Params, type Scale } from "@humino/core";
 import type { Store } from "./store.js";
 
 export const newSeed = () => Math.floor(Math.random() * 1000);
@@ -73,9 +73,13 @@ export function applyToClip(
   seed: number,
   store: Store,
   transaction: (fn: () => void) => void,
+  /** The dialog's selection, one flag per note of the voiced base (see `voicedBase`). */
+  selected?: boolean[],
 ) {
   const overrides = state.overrides;
-  const result = process(state.original, params, { tempo: state.tempo, seed, clipEnd: state.clipEnd, ...(state.scale && { scale: state.scale }) }, overrides);
+  const voiced = voicedBase(state.original, params, state.tempo);
+  const base = selected ? voiced.map((n, i) => ({ ...n, selected: selected[i] ?? false })) : voiced;
+  const result = process(base, params, { tempo: state.tempo, seed, clipEnd: state.clipEnd, ...(state.scale && { scale: state.scale }) }, overrides);
   transaction(() => {
     clip.notes = result.notes.map(toSdk);
   });

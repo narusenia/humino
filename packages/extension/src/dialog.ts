@@ -22,7 +22,7 @@ export type DialogInput = {
 
 /** What the dialog sends back with `close_and_send`. */
 export type DialogOutput = {
-  /** `overrides` and `selected` (per input note) are the dialog's edits. */
+  /** `overrides` and `selected` (per note of `voicedBase(notes)`) are the dialog's edits. */
   apply?: { params: Params; seed: number; overrides: Overrides; selected: boolean[] };
   /** Present when the user saved or deleted presets. */
   presets?: Preset[];

@@ -6,7 +6,7 @@ import { applyHumanize, DEFAULT_HUMANIZE, type HumanizeParams } from "./humanize
 import { applyPedal, type PedalMode } from "./pedal.js";
 import { applyConnect, DEFAULT_CONNECT, type ConnectParams } from "./connect.js";
 import { createRng } from "./rng.js";
-import { DEFAULT_VOICING, type VoicingParams } from "./voicing.js";
+import { DEFAULT_VOICING, voice, type VoicingParams } from "./voicing.js";
 import { applyStrum, chordKey, DEFAULT_STRUM, type ChordOverride, type StrumParams } from "./strum.js";
 import { clampVelocity, DEFAULT_VELOCITY, type Context, type Note } from "./types.js";
 
@@ -40,6 +40,10 @@ export const DEFAULT_PARAMS: Params = {
 
 /** `chordWindow` in beats at `tempo`, for `analyze`. */
 export const chordWindowBeats = (p: Params, tempo: number) => Math.max(1e-6, msToBeats(p.chordWindow, tempo));
+
+/** The notes `process()` should start from: guitar shapes when voicing is on, else `notes` as they are. */
+export const voicedBase = (notes: readonly Note[], p: Params, tempo: number): readonly Note[] =>
+  p.mode === "guitar" && p.voicing.on ? voice(notes, p.voicing, chordWindowBeats(p, tempo)) : notes;
 
 /** Fills fields missing from settings saved by an older version with the defaults. */
 export function completeParams(p: Params): Params {

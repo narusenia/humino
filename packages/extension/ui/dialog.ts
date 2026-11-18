@@ -10,6 +10,7 @@ import {
   DEFAULT_PARAMS,
   defaultGrooveVelocity,
   process,
+  voicedBase,
   type Mode,
   type Params,
   type Preset,
@@ -55,7 +56,10 @@ let presetIndex = -1;
 let isInit = false;
 /** Stroke directions fixed by Strum Down / Up; Clear empties it. */
 let overrides: Required<Overrides> = { chords: {}, notes: {}, ...clone(input.overrides) };
-/** Dialog-side selection, one flag per input note (starts from the clip's selection). */
+/** Notes the preview processes: the clip's, or their guitar shapes when voicing is on. */
+let base: readonly Note[] = input.notes;
+let baseKey = "";
+/** Dialog-side selection, one flag per note of `base` (starts from the clip's selection). */
 let selected = input.notes.map((n) => !!n.selected);
 const allPresets = () => [...BUILTIN_PRESETS, ...userPresets];
 const triplet = analyze(input.notes).triplet;
@@ -69,7 +73,7 @@ const presetsOut = () => (presetsChanged ? { presets: userPresets } : {});
 
 // ---------------------------------------------------------------- parameter definitions
 
-type Section = "groove" | "humanize" | "strum" | "connect";
+type Section = "groove" | "humanize" | "strum" | "connect" | "voicing";
 type NumDef = {
   kind: "num";
   /** "pedal" means a top-level field of Params. */
@@ -119,6 +123,12 @@ const STRUM: Def[] = [
   { kind: "num", section: "strum", key: "speedJitter", label: "speed ±", min: 0, max: 50, step: 1, unit: "%", advanced: true, mode: "guitar", tip: ["Stroke speed varies per chord", "和音ごとのストロークの速さの揺れ"] },
   { kind: "choice", section: "strum", key: "anchor", label: "anchor", options: [["first", "first"], ["center", "center"]], advanced: true, mode: "guitar", tip: ["Which string lands on the grid", "グリッドに合わせる弦"] },
   { kind: "num", section: "strum", key: "overlap", label: "overlap", min: 0, max: 20, step: 1, unit: "ms", advanced: true, mode: "guitar", tip: ["How long a chord rings into the next one", "次の和音に重ねて残す時間"] },
+];
+
+const VOICING: Def[] = [
+  { kind: "choice", section: "voicing", key: "on", label: "voicing", options: [[false, "off"], [true, "on"]], mode: "guitar", tip: ["Rewrites each chord as a shape a guitar can play, one note per string", "和音をギターで押さえられる形（1 弦に 1 音）に置き換える"] },
+  { kind: "choice", section: "voicing", key: "tuning", label: "tuning", options: [["standard", "standard"], ["dropd", "drop D"]], mode: "guitar", tip: ["Open strings the shapes are built on", "形を作るときの開放弦"] },
+  { kind: "num", section: "voicing", key: "capo", label: "capo", min: 0, max: 7, step: 1, mode: "guitar", tip: ["Capo fret; open strings move up with it", "カポの位置。開放弦がその分上がる"] },
 ];
 
 const onOff: [boolean, string][] = [
@@ -331,7 +341,7 @@ function renderParams() {
   if (tab === "groove") main.replaceChildren(grooveTable());
   else if (tab === "humanize") main.replaceChildren(...group(HUMANIZE));
   else if (tab === "connect") main.replaceChildren(...connectLanes());
-  else main.replaceChildren(...group(STRUM), fixedRow());
+  else main.replaceChildren(...group(STRUM), h("div", { className: "lane" }, ...VOICING.map(control)), fixedRow());
 }
 
 /** Connect in three lanes, one per kind: chromatic run, passing tone, grace notes. */
@@ -460,10 +470,22 @@ const tOf = (px: number) => {
 };
 const yOf = (p: number) => geo.top + geo.rows.get(p)! * geo.rowH;
 
-const notesWithSelection = () => input.notes.map((n, i) => ({ ...n, selected: selected[i]! }));
+const notesWithSelection = () => base.map((n, i) => ({ ...n, selected: selected[i]! }));
 const chordOf = (i: number) => last!.analysis.groups[last!.analysis.groupOf[i]!]!;
 
+/** Re-voices when the settings voicing depends on change; the selection goes back to the clip's. */
+function rebase() {
+  const key = JSON.stringify([params.mode, params.voicing, params.chordWindow]);
+  if (key === baseKey) return;
+  const first = !baseKey;
+  baseKey = key;
+  base = voicedBase(input.notes, params, input.tempo);
+  selected = base.map((n) => !!n.selected);
+  if (!first) renderSelbar();
+}
+
 function compute() {
+  rebase();
   last = process(notesWithSelection(), params, { tempo: input.tempo, seed, clipEnd: input.clipEnd, ...(input.scale && { scale: input.scale }) }, overrides);
   return last;
 }
@@ -473,8 +495,8 @@ function noteAt(px: number, py: number): number | undefined {
   if (!last) return undefined;
   const hit = (n: Note) =>
     py >= yOf(n.pitch) && py <= yOf(n.pitch) + geo.noteH && px >= xOf(n.startTime) - 2 && px <= Math.max(xOf(n.startTime + n.duration), xOf(n.startTime) + 4);
-  for (let i = input.notes.length - 1; i >= 0; i--) if (!last.dropped.has(i) && hit(last.final[i]!)) return i;
-  for (let i = input.notes.length - 1; i >= 0; i--) if (hit(input.notes[i]!)) return i;
+  for (let i = base.length - 1; i >= 0; i--) if (!last.dropped.has(i) && hit(last.final[i]!)) return i;
+  for (let i = base.length - 1; i >= 0; i--) if (hit(base[i]!)) return i;
   return undefined;
 }
 
@@ -491,7 +513,7 @@ function selectChordOf(i: number, add: boolean) {
 }
 
 function setNoteOverride(i: number, patch: Partial<NonNullable<Overrides["notes"]>[string]>) {
-  const key = noteKey(input.notes[i]!);
+  const key = noteKey(base[i]!);
   const next = { ...overrides.notes[key], ...patch };
   for (const k of Object.keys(next) as (keyof typeof next)[]) if (!next[k]) delete next[k];
   overrides = { ...overrides, notes: { ...overrides.notes } };
@@ -546,7 +568,7 @@ canvas.addEventListener("pointerdown", (e) => {
       const g = last.analysis.groups.reduce((b, g) => (Math.abs(g.start - t) < Math.abs(b.start - t) ? g : b));
       notes = g.idx;
     }
-    drag = { kind: "velocity", y0: py, notes, dv0: notes.map((i) => overrides.notes[noteKey(input.notes[i]!)]?.dv ?? 0) };
+    drag = { kind: "velocity", y0: py, notes, dv0: notes.map((i) => overrides.notes[noteKey(base[i]!)]?.dv ?? 0) };
     return;
   }
 
@@ -554,7 +576,7 @@ canvas.addEventListener("pointerdown", (e) => {
   if (i !== undefined && e.altKey) {
     if (!selected[i]) selectChordOf(i, false);
     const notes = selected[i] ? selectedIdx() : [i];
-    drag = { kind: "nudge", x0: px, notes, dt0: notes.map((k) => overrides.notes[noteKey(input.notes[k]!)]?.dt ?? 0) };
+    drag = { kind: "nudge", x0: px, notes, dt0: notes.map((k) => overrides.notes[noteKey(base[k]!)]?.dt ?? 0) };
     return;
   }
   drag = { kind: "click", x0: px, y0: py, note: i, add: e.shiftKey };
@@ -572,10 +594,10 @@ canvas.addEventListener("pointermove", (e) => {
     drag.y1 = py;
     const [ta, tb] = [tOf(Math.min(drag.x0, px)), tOf(Math.max(drag.x0, px))];
     const [ya, yb] = [Math.min(drag.y0, py), Math.max(drag.y0, py)];
-    const base = drag.base;
-    selected = input.notes.map((n, k) => {
+    const before = drag.base;
+    selected = base.map((n, k) => {
       const inside = n.startTime + n.duration >= ta && n.startTime <= tb && yOf(n.pitch) + geo.noteH >= ya && yOf(n.pitch) <= yb;
-      return base[k]! || inside;
+      return before[k]! || inside;
     });
     renderSelbar();
     schedule();
@@ -643,7 +665,7 @@ function hover(px: number, py: number, e: MouseEvent) {
     tip.hidden = true;
     return;
   }
-  const orig = input.notes[i]!;
+  const orig = base[i]!;
   const ms = (b: number) => (b * 60000) / input.tempo;
   const fmt = (v: number) => `${v >= 0 ? "+" : ""}${v.toFixed(1)}`;
   const steps: [string, Note, Note][] = [
@@ -694,7 +716,7 @@ function draw() {
   const font = color("--font");
   c.clearRect(0, 0, w, hgt);
 
-  const notes = input.notes;
+  const notes = base;
   if (!notes.length) {
     c.fillStyle = color("--text-dim");
     c.font = `13px ${font}`;
@@ -814,7 +836,7 @@ function draw() {
   }
 
   // results: notes the open tab's stage changed (start, length or velocity) take its colour
-  const before: Record<Stage, Note[]> = { groove: notes, humanize: r.snapshots.groove, strum: r.snapshots.humanize, pedal: r.snapshots.strum, connect: r.snapshots.pedal };
+  const before: Record<Stage, readonly Note[]> = { groove: notes, humanize: r.snapshots.groove, strum: r.snapshots.humanize, pedal: r.snapshots.strum, connect: r.snapshots.pedal };
   const changedBy = (stage: Stage, i: number) => {
     const a = before[stage][i]!;
     const b = r.snapshots[stage][i]!;
@@ -990,7 +1012,7 @@ function renderSelbar() {
   const count = $("count");
   count.textContent = idx.length
     ? ja ? `${idx.length} ノートを選択中` : `${idx.length} notes selected`
-    : ja ? `${input.notes.length} ノート（クリップ全体）` : `${input.notes.length} notes (whole clip)`;
+    : ja ? `${base.length} ノート（クリップ全体）` : `${base.length} notes (whole clip)`;
   if (!idx.length || !last) {
     bar.replaceChildren(
       h("span", { className: "hint" }, ja
@@ -1001,7 +1023,7 @@ function renderSelbar() {
   }
   const groups = [...new Set(idx.map((i) => last!.analysis.groupOf[i]!))].map((gi) => last!.analysis.groups[gi]!);
   const keys = groups.filter((g) => g.idx.length >= 2).map((g) => chordKey(g.start));
-  const locked = idx.every((i) => overrides.notes[noteKey(input.notes[i]!)]?.lock);
+  const locked = idx.every((i) => overrides.notes[noteKey(base[i]!)]?.lock);
   const guitar = params.mode === "guitar";
 
   const setChords = (patch: (cur: LooseChord) => LooseChord) => {
@@ -1071,7 +1093,7 @@ function renderSelbar() {
     h("span", { className: "spacer" }),
     h("button", {
       onclick: () => {
-        const noteKeys = new Set(groups.flatMap((g) => g.idx).map((i) => noteKey(input.notes[i]!)));
+        const noteKeys = new Set(groups.flatMap((g) => g.idx).map((i) => noteKey(base[i]!)));
         overrides = {
           chords: Object.fromEntries(Object.entries(overrides.chords).filter(([k]) => !keys.includes(k))),
           notes: Object.fromEntries(Object.entries(overrides.notes).filter(([k]) => !noteKeys.has(k))),

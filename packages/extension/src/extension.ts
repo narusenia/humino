@@ -46,8 +46,7 @@ export function activate(activation: ActivationContext) {
         if (chosen.presets) store.savePresets(chosen.presets);
         if (chosen.apply) {
           const { params, seed, overrides, selected } = chosen.apply;
-          const original = s.original.map((n, i) => ({ ...n, selected: selected[i] ?? false }));
-          applyToClip(clip, { ...s, original, overrides }, params, seed, store, transaction);
+          applyToClip(clip, { ...s, overrides }, params, seed, store, transaction, selected);
         }
       },
     ],
