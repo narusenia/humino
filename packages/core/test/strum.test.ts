@@ -50,11 +50,22 @@ describe("applyStrum", () => {
     expect(work.map((n) => n.velocity)).toEqual([100, 98, 96, 94, 92, 90]);
   });
 
-  it("plays upstrokes high to low and skips low strings", () => {
+  it("plays upstrokes high to low; missed low strings ring on from the downstroke", () => {
+    const { work, dropped } = run([...chordAt(0), ...chordAt(0.5)], { upSkip: 2 });
+    expect([...dropped].sort()).toEqual([6, 7]);
+    expect(work[11]!.startTime).toBe(0.5);
+    expect(work[8]!.startTime).toBeCloseTo(0.52);
+    expect(work[0]!.startTime + work[0]!.duration).toBeCloseTo(1);
+    expect(work[1]!.startTime + work[1]!.duration).toBeCloseTo(1);
+    // re-struck strings keep their own end (they are not stretched to the cut)
+    expect(work[5]!.startTime + work[5]!.duration).toBeCloseTo(0.5);
+  });
+
+  it("keeps a missed low note when nothing was ringing on it", () => {
     const { work, dropped } = run(chordAt(0.5), { upSkip: 2 });
-    expect([...dropped].sort()).toEqual([0, 1]);
+    expect(dropped.size).toBe(0);
     expect(work[5]!.startTime).toBe(0.5);
-    expect(work[2]!.startTime).toBeCloseTo(0.52);
+    expect(work[0]!.startTime).toBeCloseTo(0.52); // played last, at the end of the stroke
   });
 
   it("centre anchor starts half the stroke early, clamped at 0", () => {
@@ -85,6 +96,13 @@ describe("applyStrum", () => {
     ];
     const { work } = run(notes);
     expect(work[1]!.startTime + work[1]!.duration).toBeCloseTo(0.5);
+  });
+
+  it("does not cut held notes for a nearby but different pitch", () => {
+    const held: Note[] = [52, 56, 59].map((pitch) => ({ pitch, startTime: 0, duration: 4, velocity: 100 }));
+    const fill: Note[] = [54, 57].map((pitch) => ({ pitch, startTime: 0.5, duration: 0.25, velocity: 100 }));
+    const { work } = run([...held, ...fill]);
+    for (const n of work.slice(0, 3)) expect(n.startTime + n.duration).toBeCloseTo(4);
   });
 
   it("cuts the previous chord just after the next one starts", () => {
