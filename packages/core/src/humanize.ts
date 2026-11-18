@@ -50,8 +50,9 @@ export function driftCurve(a: Analysis, p: HumanizeParams, rng: Rng): number[] {
 /**
  * Mutates `work`. Random numbers are drawn for every note whether targeted or
  * not, so a partial apply sees the same curve as a full one (ADR-0007).
+ * Returns the drift curve (ms per group) for the preview.
  */
-export function applyHumanize(work: Note[], a: Analysis, target: boolean[], p: HumanizeParams, ctx: Context, rng: Rng) {
+export function applyHumanize(work: Note[], a: Analysis, target: boolean[], p: HumanizeParams, ctx: Context, rng: Rng): number[] {
   const drift = driftCurve(a, p, rng);
   const jitter = a.groups.map((g) => rng.gaussian() * p.jitter * (1 - (p.beatWeight / 100) * (1 - g.level / 4)));
   const velNoise = work.map(() => (rng.next() * 2 - 1) * p.velJitter);
@@ -85,6 +86,7 @@ export function applyHumanize(work: Note[], a: Analysis, target: boolean[], p: H
       n.duration = Math.max(MIN_DURATION, dur);
     }
   });
+  return drift;
 }
 
 /** Start of the next note with the same pitch after group `gi`. */
