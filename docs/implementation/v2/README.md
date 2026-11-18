@@ -13,7 +13,7 @@
 | 05b | UI の見直し：MIDI Tools は全デバイスを v8ui の絵と文字の値に作り直した。ダイアログ全体の並びの整理は残り | 作業中 |
 | 05c | 和音の判定幅（chordWindow）：グリッドから少しずれた和音も 1 つの和音として扱う | 完了 |
 | 05d | Extension のプレビューにコード名とディグリー（Scale Mode のキーに対するローマ数字）を出す。chord window をヘッダーに置く | 完了 |
-| 06 | core にギターボイシング（チューニング、カポ、弦の番号）と、Strum を弦の順にする | 未着手 |
-| 07 | ボイシングの UI（Extension、MIDI Tools） | 未着手 |
+| 06 | core にギターボイシング（チューニング、カポ、弦の番号）と、Strum を弦の順にする | 完了 |
+| 07 | ボイシングの UI（Extension の Strum タブ、MIDI Tools の Str ページと humino Guitar Voicing） | 完了 |
 | 08 | Extension：別クリップから Groove を抽出してステップ表に入れる | 未着手 |
 | 09 | Live で確かめてリリース | 未着手 |

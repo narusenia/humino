@@ -32,9 +32,9 @@ Every apply starts again from the original notes, so the variation never piles u
 
 `humino.amxd` is a MIDI Transformation for Live 12 Suite (Max for Live). It works on the notes selected in the piano roll and re-applies as you turn its dials, so you can listen while adjusting.
 
-Download `humino.amxd` from Releases, put it in `User Library/MIDI Tools/Max Transformations/`, then pick humino in the Transform tab of the clip view. The panel has a page tab and Mode on top and four pages: Hum (drift, jitter, spread, velocity, length, legato), Feel (swing, beat weight, chord balance, drift return, chord window, swing grid, pedal), Str (speeds, speed variation, taper, up skip, overlap, direction, motion, anchor) and Con (chromatic runs, passing tones, grace notes). Like Live's own MIDI Tools, each page shows its values as text over a picture of an example phrase run through humino: drag a value up or down to change it. Each kind of Connect note has its own switch (click its name) and velocity, and stays off until you switch it on. Values the current mode does not use are dimmed. Hover a control to read what it does in Live's Info View. The 16-step groove table and hand edits are only in the Extension.
+Download `humino.amxd` from Releases, put it in `User Library/MIDI Tools/Max Transformations/`, then pick humino in the Transform tab of the clip view. The panel has a page tab and Mode on top and four pages: Hum (drift, jitter, spread, velocity, length, legato), Feel (swing, beat weight, chord balance, drift return, chord window, swing grid, pedal), Str (speeds, speed variation, taper, up skip, overlap, direction, motion, anchor, guitar voicing with tuning and capo) and Con (runs, passing tones, grace notes). Like Live's own MIDI Tools, each page shows its values as text over a picture of an example phrase run through humino: drag a value up or down to change it. Each kind of Connect note has its own switch (click its name) and velocity, and stays off until you switch it on. Values the current mode does not use are dimmed. Hover a control to read what it does in Live's Info View. The 16-step groove table and hand edits are only in the Extension.
 
-There is also one device per stage: `humino Humanize`, `humino Swing`, `humino Strum`, `humino Pedal` and `humino Connect`. Each one does only its own stage, so you can run them one after another. Run Connect before Strum: strummed chords no longer start together and are not read as chords.
+There is also one device per stage: `humino Guitar Voicing`, `humino Humanize`, `humino Swing`, `humino Strum`, `humino Pedal` and `humino Connect`. Each one does only its own stage, so you can run them one after another. Run Guitar Voicing first and Connect before Strum: strummed chords no longer start together and are not read as chords.
 
 ## Features
 
@@ -47,9 +47,9 @@ There is also one device per stage: `humino Humanize`, `humino Swing`, `humino S
 
 ### v2
 
-- **Connect**: passing tones, chromatic runs (1–6 notes) and grace notes between chords. Passing tones need Live's Scale Mode.
+- **Connect**: passing tones, runs (1–6 notes, through the scale or by semitones) and grace notes between chords. Passing tones and in-scale steps need Live's Scale Mode.
 - **Chord names** in the dialog's preview, with the degree (I, vi, V7…) when Live's Scale Mode is on. The chord window in the header sets how close together notes must start to count as one chord.
-- **Guitar voicing** (planned): rearranges chords into shapes a guitarist can actually play (standard, Drop D, capo).
+- **Guitar voicing** (guitar): rewrites each chord as a shape a guitarist can play, one note per string (standard or Drop D, capo 0–7), and Strum then plays it string by string. In the Strum tab of the dialog, on the Str page, and as its own device.
 - Extract a groove from another clip (planned).
 
 ## Development
