@@ -19,6 +19,7 @@ declare const mgraphics: {
   set_source_rgba(r: number, g: number, b: number, a: number): void;
   set_line_width(w: number): void;
   rectangle(x: number, y: number, w: number, h: number): void;
+  ellipse(x: number, y: number, w: number, h: number): void;
   rectangle_rounded(x: number, y: number, w: number, h: number, ow: number, oh: number): void;
   move_to(x: number, y: number): void;
   line_to(x: number, y: number): void;

@@ -99,6 +99,8 @@ g.msg_dictionary = (input: ToolInput) => {
   // Voicing rewrites the chords before anything else; its notes replace the originals as new notes.
   const voiced = params.mode === "guitar" && params.voicing.on;
   const base = voiced ? voice(notes.map(toCore), params.voicing, chordWindowBeats(params, bpm)) : notes.map(toCore);
+  // Guitar Voicing: the shapes only; strum them with humino Strum afterwards.
+  if (device.id === "voicing") return outlet_dictionary(0, { notes: base.map(fromCore) });
   const r = process(base, params, {
     tempo: bpm,
     seed: input.seed ?? 0,

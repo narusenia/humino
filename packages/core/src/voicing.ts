@@ -92,8 +92,11 @@ function bestShape(pitches: number[], open: number[], prev: number | undefined):
  * as they are. Each voiced note takes length, velocity and the other fields from the
  * input note nearest in pitch. Returns new notes; `notes` is not modified.
  */
+/** Open strings low to high with the capo on: a voiced note's fret is its pitch minus its string's entry here. */
+export const openStrings = (p: VoicingParams) => TUNINGS[p.tuning].map((o) => o + Math.max(0, Math.min(7, Math.round(p.capo))));
+
 export function voice(notes: readonly Note[], p: VoicingParams, window?: number): Note[] {
-  const open = TUNINGS[p.tuning].map((o) => o + Math.max(0, Math.min(7, Math.round(p.capo))));
+  const open = openStrings(p);
   const a = analyze(notes, 4, window);
   const target = targetGroups(notes, a);
   const out: Note[] = [];

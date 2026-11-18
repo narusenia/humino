@@ -7,7 +7,7 @@
 // edits go out as "<key> <v>" to the matching (hidden) dial or button.
 
 import { CONTROLS, DEVICES, neutral, type Control, type Field, type Picture } from "./controls.js";
-import { process, voice, type Note, type Params, type Scale } from "@humino/core";
+import { openStrings, process, voice, type Note, type Params, type Scale } from "@humino/core";
 
 const g = globalThis as Record<string, unknown>;
 g.inlets = 1;
@@ -265,6 +265,65 @@ const PICTURES: Record<Picture, (a: Area) => void> = {
       rgba(C.fg, 0.5);
       pts.forEach(([px1, py1], j) => (j ? mgraphics.line_to(px1, py1) : mgraphics.move_to(px1, py1)));
       mgraphics.stroke();
+    });
+  },
+
+  voicing(a) {
+    // C, Am, F, G from piano voicings, drawn as chord boxes in the current tuning and capo
+    const vp = { ...params.voicing, on: true };
+    const prog: [string, number[]][] = [["C", [48, 52, 55, 60, 64]], ["Am", [45, 52, 57, 60, 64]], ["F", [41, 48, 53, 57, 60, 65]], ["G", [43, 47, 50, 55, 59, 67]]];
+    const out = voice(prog.flatMap(([, ps], k) => chord(k, ps, 1)), vp);
+    const open = openStrings(vp);
+    const cw = a.w / prog.length;
+    const FRETS = 4;
+    prog.forEach(([name], k) => {
+      const shape = out.filter((n) => n.startTime === k);
+      const frets = open.map((o, s) => {
+        const n = shape.find((x) => x.string === open.length - s);
+        return n ? n.pitch - o : null;
+      });
+      const fretted = frets.filter((x): x is number => x !== null && x > 0);
+      const first = !fretted.length || Math.max(...fretted) <= FRETS ? 1 : Math.min(...fretted);
+      const bx = a.x + k * cw + 8;
+      const bw = cw - 14;
+      const sx = bw / (open.length - 1);
+      const y0 = a.y + 24;
+      const fy = (a.h - 30) / FRETS;
+      rgba(C.title);
+      mgraphics.set_font_size(9);
+      text(name, bx, a.y + 9);
+      rgba(C.frame);
+      mgraphics.set_line_width(1);
+      for (let s = 0; s < open.length; s++) line(Math.round(bx + s * sx) + 0.5, y0, Math.round(bx + s * sx) + 0.5, y0 + FRETS * fy);
+      for (let r = 0; r <= FRETS; r++) line(bx, Math.round(y0 + r * fy) + 0.5, bx + bw, Math.round(y0 + r * fy) + 0.5);
+      if (first === 1) {
+        rgba(C.fg, 0.7);
+        mgraphics.set_line_width(2);
+        line(bx, y0, bx + bw, y0);
+      } else {
+        rgba(C.dim);
+        mgraphics.set_font_size(7);
+        text(String(first), bx - 7, y0 + fy * 0.5 + 3);
+      }
+      mgraphics.set_line_width(1);
+      frets.forEach((fr, s) => {
+        const x = bx + s * sx;
+        if (fr === null || fr === 0) {
+          // open string: a ring; muted: a cross
+          rgba(fr === null ? C.dim : C.fg, 0.8);
+          if (fr === 0) {
+            mgraphics.ellipse(x - 2, y0 - 7, 4, 4);
+            mgraphics.stroke();
+          } else {
+            line(x - 2, y0 - 7, x + 2, y0 - 3);
+            line(x + 2, y0 - 7, x - 2, y0 - 3);
+          }
+          return;
+        }
+        rgba(C.fg);
+        mgraphics.ellipse(x - 2.5, y0 + (fr - first + 0.5) * fy - 2.5, 5, 5);
+        mgraphics.fill();
+      });
     });
   },
 

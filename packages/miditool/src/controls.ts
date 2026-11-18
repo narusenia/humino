@@ -94,7 +94,7 @@ for (const c of CONTROLS) {
 
 /** A value shown in the picture: `label` overrides the control's; clicking the label flips `toggle`. */
 export type Field = { key: string; label?: string; toggle?: string };
-export type Picture = "humanize" | "swing" | "pedal" | "strum" | "connect";
+export type Picture = "humanize" | "swing" | "pedal" | "strum" | "connect" | "voicing";
 /** One page of the picture: what it draws and the values above it, row by row (null leaves a cell empty). */
 export type ViewPage = { picture: Picture; rows: (Field | null)[][] };
 
@@ -147,6 +147,7 @@ const STRUM: (Field | null)[][] = [
   [f("upskip"), f("overlap")],
   [f("tuning", "Voicing", "voicing"), f("capo")],
 ];
+const VOICING_KEYS = ["voicing", "tuning", "capo"];
 const CON: (Field | null)[][] = [
   [f("chromatic", "Run", "runon"), f("steps", "Steps"), f("runvel", "Vel")],
   [f("passing", "Pass", "passon"), null, f("passvel", "Vel")],
@@ -192,9 +193,18 @@ export const DEVICES: Device[] = [
     id: "strum",
     file: "humino Strum",
     pageNames: ["Strum"],
-    pages: [[...keysOn(2), "chordwin"]],
-    view: { rect: [4, 4, 144, 121], pages: [{ picture: "strum", rows: [...STRUM, [f("chordwin"), null]] }] },
+    // voicing has its own device, run before this one
+    pages: [[...keysOn(2).filter((k) => !VOICING_KEYS.includes(k)), "chordwin"]],
+    view: { rect: [4, 4, 144, 121], pages: [{ picture: "strum", rows: [...STRUM.slice(0, -1), [f("chordwin"), null]] }] },
     params: only((p) => (p.mode = "guitar")),
+  },
+  {
+    id: "voicing",
+    file: "humino Guitar Voicing",
+    pageNames: ["Voicing"],
+    pages: [["tuning", "capo", "chordwin"]],
+    view: { rect: [4, 4, 144, 139], pages: [{ picture: "voicing", rows: [[f("tuning"), f("capo")], [f("chordwin"), null]] }] },
+    params: only((p) => ((p.mode = "guitar"), (p.voicing.on = true))),
   },
   {
     id: "pedal",

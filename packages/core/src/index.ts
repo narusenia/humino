@@ -11,5 +11,5 @@ export { DEFAULT_CONNECT, type ConnectParams, type RunDirection, type Scale } fr
 export { chordWindowBeats, completeParams, DEFAULT_PARAMS, noteKey, process, STAGES, voicedBase, type Mode, type NoteOverride, type Overrides, type Params, type Result, type Stage } from "./pipeline.js";
 export { hashNotes } from "./hash.js";
 export { chordLabel, degree, nameChord, type ChordName } from "./chords.js";
-export { DEFAULT_VOICING, voice, type Tuning, type VoicingParams } from "./voicing.js";
+export { DEFAULT_VOICING, openStrings, voice, type Tuning, type VoicingParams } from "./voicing.js";
 export { BUILTIN_PRESETS, type Preset } from "./presets.js";
