@@ -542,15 +542,23 @@ function draw() {
 
   // drift curve on the humanize tab
   if (tab === "humanize" && r.drift.length > 1) {
+    // Fixed ±50 ms axis so the curve grows with the drift amount instead of always filling the box.
+    const RANGE_MS = 50;
     const mid = top + (hgt - top) / 2;
-    const scale = ((hgt - top) / 2 - 8) / Math.max(1, params.humanize.drift * 2.5, ...r.drift.map(Math.abs));
+    const scale = ((hgt - top) / 2 - 8) / RANGE_MS;
     c.globalAlpha = 0.5;
     c.strokeStyle = color("--line");
-    c.setLineDash([3, 3]);
-    c.beginPath();
-    c.moveTo(PAD, mid);
-    c.lineTo(w - PAD, mid);
-    c.stroke();
+    c.fillStyle = color("--text-dim");
+    c.font = `10px ${color("--font")}`;
+    for (const ms of [-RANGE_MS, 0, RANGE_MS]) {
+      const py = mid - ms * scale;
+      c.setLineDash(ms === 0 ? [3, 3] : [1, 4]);
+      c.beginPath();
+      c.moveTo(PAD, py);
+      c.lineTo(w - PAD, py);
+      c.stroke();
+      if (ms) c.fillText(`${ms > 0 ? "+" : ""}${ms} ms`, PAD + 2, py - 3);
+    }
     c.setLineDash([]);
     c.globalAlpha = 0.9;
     c.strokeStyle = color("--stage-humanize");
@@ -558,7 +566,7 @@ function draw() {
     c.beginPath();
     r.analysis.groups.forEach((g, gi) => {
       const px = x(g.start);
-      const py = mid - r.drift[gi]! * scale;
+      const py = mid - Math.max(-RANGE_MS, Math.min(RANGE_MS, r.drift[gi]!)) * scale;
       gi ? c.lineTo(px, py) : c.moveTo(px, py);
     });
     c.stroke();
