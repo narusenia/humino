@@ -20,7 +20,10 @@ export function activate(activation: ActivationContext) {
       }
     })();
   };
-  const state = (clip: MidiClip<"1.0.0">) => readClip(clip, context.application.song.tempo, store);
+  const state = (clip: MidiClip<"1.0.0">) => {
+    const song = context.application.song;
+    return readClip(clip, song.tempo, song.scaleMode ? { root: song.rootNote, intervals: song.scaleIntervals } : undefined, store);
+  };
 
   const commands: [id: string, title: string, run: (clip: MidiClip<"1.0.0">) => Promise<void> | void][] = [
     [
@@ -34,6 +37,7 @@ export function activate(activation: ActivationContext) {
           overrides: s.overrides,
           tempo: s.tempo,
           clipEnd: s.clipEnd,
+          ...(s.scale && { scale: s.scale }),
           params: last?.params ?? DEFAULT_PARAMS,
           seed: last?.seed ?? newSeed(),
           presets: store.presets(),

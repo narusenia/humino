@@ -125,7 +125,6 @@ input {
 }
 .tabs button[aria-selected="true"] { color: var(--text); font-weight: 450; border-bottom-color: var(--tab-color, var(--accent)); }
 .tabs button:disabled { color: var(--muted); cursor: default; }
-.tabs .badge { font-size: 10px; margin-left: 4px; color: var(--muted); }
 
 /* Parameters */
 .params { padding: 14px 16px 10px; overflow-y: auto; }

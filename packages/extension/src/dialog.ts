@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 import type { ExtensionContext } from "@ableton-extensions/sdk";
-import type { Note, Overrides, Params, Preset } from "@humino/core";
+import type { Note, Overrides, Params, Preset, Scale } from "@humino/core";
 
 declare const __DIALOG_HTML__: string;
 
@@ -11,6 +11,8 @@ export type DialogInput = {
   overrides: Overrides;
   tempo: number;
   clipEnd: number;
+  /** Live's scale, absent when Scale Mode is off. */
+  scale?: Scale;
   params: Params;
   seed: number;
   /** User presets only; builtins come from core inside the dialog. */

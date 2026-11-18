@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 import type { MidiClip, NoteDescription } from "@ableton-extensions/sdk";
-import { analyze, chordKey, hashNotes, process, targetGroups, type Direction, type Note, type Overrides, type Params } from "@humino/core";
+import { analyze, chordKey, hashNotes, process, targetGroups, type Direction, type Note, type Overrides, type Params, type Scale } from "@humino/core";
 import type { Store } from "./store.js";
 
 export const newSeed = () => Math.floor(Math.random() * 1000);
@@ -13,6 +13,7 @@ export type ClipState = {
   overrides: Overrides;
   tempo: number;
   clipEnd: number;
+  scale?: Scale;
 };
 
 /** core's `string` is internal; the SDK must not receive unknown fields. */
@@ -37,7 +38,7 @@ function carrySelection(current: readonly Note[], original: Note[]): Note[] {
   return out;
 }
 
-export function readClip(clip: MidiClip<"1.0.0">, tempo: number, store: Store): ClipState {
+export function readClip(clip: MidiClip<"1.0.0">, tempo: number, scale: Scale | undefined, store: Store): ClipState {
   const current: Note[] = clip.notes;
   const entry = store.original(hashNotes(current));
   return {
@@ -45,6 +46,7 @@ export function readClip(clip: MidiClip<"1.0.0">, tempo: number, store: Store): 
     overrides: entry?.overrides ?? fromForced(entry?.forced),
     tempo,
     clipEnd: clip.looping ? clip.loopEnd : clip.endMarker,
+    ...(scale && { scale }),
   };
 }
 
@@ -73,7 +75,7 @@ export function applyToClip(
   transaction: (fn: () => void) => void,
 ) {
   const overrides = state.overrides;
-  const result = process(state.original, params, { tempo: state.tempo, seed, clipEnd: state.clipEnd }, overrides);
+  const result = process(state.original, params, { tempo: state.tempo, seed, clipEnd: state.clipEnd, ...(state.scale && { scale: state.scale }) }, overrides);
   transaction(() => {
     clip.notes = result.notes.map(toSdk);
   });

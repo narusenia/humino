@@ -66,7 +66,7 @@ const presetsOut = () => (presetsChanged ? { presets: userPresets } : {});
 
 // ---------------------------------------------------------------- parameter definitions
 
-type Section = "groove" | "humanize" | "strum";
+type Section = "groove" | "humanize" | "strum" | "connect";
 type NumDef = {
   kind: "num";
   section: Section;
@@ -85,7 +85,7 @@ type ChoiceDef = {
   section: Section | "pedal";
   key: string;
   label: string;
-  options: [value: string | number, label: string][];
+  options: [value: string | number | boolean, label: string][];
   tip: [string, string];
   advanced?: boolean;
   mode?: Mode;
@@ -115,6 +115,16 @@ const STRUM: Def[] = [
   { kind: "num", section: "strum", key: "speedJitter", label: "speed ±", min: 0, max: 50, step: 1, unit: "%", advanced: true, mode: "guitar", tip: ["Stroke speed varies per chord", "和音ごとのストロークの速さの揺れ"] },
   { kind: "choice", section: "strum", key: "anchor", label: "anchor", options: [["first", "first"], ["center", "center"]], advanced: true, mode: "guitar", tip: ["Which string lands on the grid", "グリッドに合わせる弦"] },
   { kind: "num", section: "strum", key: "overlap", label: "overlap", min: 0, max: 20, step: 1, unit: "ms", advanced: true, mode: "guitar", tip: ["How long a chord rings into the next one", "次の和音に重ねて残す時間"] },
+];
+
+const CONNECT: Def[] = [
+  { kind: "choice", section: "connect", key: "on", label: "connect", options: [[false, "off"], [true, "on"]], tip: ["Add notes that lead from one chord to the next", "和音から次の和音へつなぐ音を足す"] },
+  { kind: "num", section: "connect", key: "chromatic", label: "chromatic", min: 0, max: 100, step: 1, unit: "%", tip: ["Chance of a semitone run into the next bass note", "次のベースへ半音ずつ近づく音を入れる確率"] },
+  { kind: "num", section: "connect", key: "steps", label: "run steps", min: 1, max: 4, step: 1, tip: ["Run notes, 16ths each; fewer when there is no room", "半音で近づく音の数（1 音 16 分）。間が足りなければ減らす"] },
+  { kind: "choice", section: "connect", key: "runDirection", label: "run from", options: [["auto", "auto"], ["up", "below"], ["down", "above"]], tip: ["Side the run comes from; auto follows the previous bass note", "どちらから近づくか。auto は前のベースの側から"] },
+  { kind: "num", section: "connect", key: "passing", label: "passing", min: 0, max: 100, step: 1, unit: "%", tip: ["Chance of a scale tone between two bass notes (needs Scale Mode)", "2 つのベースのあいだにスケール音を入れる確率（Scale Mode が必要）"] },
+  { kind: "num", section: "connect", key: "grace", label: "grace", min: 0, max: 100, step: 1, unit: "%", tip: ["Chance of a grace note just before the top note", "最高音の直前に前打音を入れる確率"] },
+  { kind: "choice", section: "connect", key: "graceLength", label: "grace len", options: [[1 / 32, "1/32"], [1 / 16, "1/16"]], tip: ["Grace note length in beats", "前打音の長さ（拍）"] },
 ];
 
 const GROOVE: Def[] = [
@@ -170,7 +180,7 @@ function numControl(d: NumDef) {
   return el;
 }
 
-function segmented(options: [string | number, string][], get: () => unknown, onPick: (v: string | number) => void, disabled = false) {
+function segmented<V extends string | number | boolean>(options: [V, string][], get: () => unknown, onPick: (v: V) => void, disabled = false) {
   const group = h("div", { className: "segmented" });
   group.setAttribute("role", "radiogroup");
   const paint = () =>
@@ -276,7 +286,7 @@ const TABS: [Tab, string, Stage | null][] = [
   ["groove", "groove", "groove"],
   ["humanize", "humanize", "humanize"],
   ["strum", "strum", "strum"],
-  ["connect", "connect", null],
+  ["connect", "connect", "connect"],
 ];
 const STAGE_COLOR: Record<Tab, string> = {
   groove: "--stage-groove",
@@ -289,8 +299,7 @@ function renderTabs() {
   const nav = $("tabs");
   nav.replaceChildren(
     ...TABS.map(([id, label]) => {
-      const btn = h("button", { disabled: id === "connect", onclick: () => ((tab = id), renderTabs(), renderParams(), schedule()) }, label);
-      if (id === "connect") btn.append(h("span", { className: "badge" }, "v2"));
+      const btn = h("button", { onclick: () => ((tab = id), renderTabs(), renderParams(), schedule()) }, label);
       btn.setAttribute("role", "tab");
       btn.setAttribute("aria-selected", String(id === tab));
       btn.style.setProperty("--tab-color", `var(${STAGE_COLOR[id]})`);
@@ -304,6 +313,7 @@ function renderParams() {
   main.style.setProperty("--section", `var(${STAGE_COLOR[tab]})`);
   if (tab === "groove") main.replaceChildren(grooveTable());
   else if (tab === "humanize") main.replaceChildren(...group(HUMANIZE));
+  else if (tab === "connect") main.replaceChildren(...group(CONNECT));
   else main.replaceChildren(...group(STRUM), fixedRow());
 }
 
@@ -391,7 +401,7 @@ const notesWithSelection = () => input.notes.map((n, i) => ({ ...n, selected: se
 const chordOf = (i: number) => last!.analysis.groups[last!.analysis.groupOf[i]!]!;
 
 function compute() {
-  last = process(notesWithSelection(), params, { tempo: input.tempo, seed, clipEnd: input.clipEnd }, overrides);
+  last = process(notesWithSelection(), params, { tempo: input.tempo, seed, clipEnd: input.clipEnd, ...(input.scale && { scale: input.scale }) }, overrides);
   return last;
 }
 
@@ -635,7 +645,7 @@ function draw() {
   const top = BAR_STRIP + ARROW_STRIP;
   const notesBottom = hgt - VEL_H - 8;
   // Fold: one row per pitch that is used, like Live's Fold.
-  const pitches = [...new Set(notes.map((n) => n.pitch))].sort((a, b) => b - a);
+  const pitches = [...new Set([...notes, ...r.added].map((n) => n.pitch))].sort((a, b) => b - a);
   const rowH = Math.min(22, (notesBottom - top) / pitches.length);
   geo = { w, h: hgt, top, notesBottom, rowH, noteH: Math.max(2, rowH - 2), rows: new Map(pitches.map((p, k) => [p, k])) };
   const x = xOf;
@@ -693,13 +703,13 @@ function draw() {
   }
 
   // results: notes the open tab's stage changed (start, length or velocity) take its colour
-  const before: Record<Stage, Note[]> = { groove: notes, humanize: r.snapshots.groove, strum: r.snapshots.humanize, pedal: r.snapshots.strum };
+  const before: Record<Stage, Note[]> = { groove: notes, humanize: r.snapshots.groove, strum: r.snapshots.humanize, pedal: r.snapshots.strum, connect: r.snapshots.pedal };
   const changedBy = (stage: Stage, i: number) => {
     const a = before[stage][i]!;
     const b = r.snapshots[stage][i]!;
     return Math.abs(a.startTime - b.startTime) > 1e-6 || Math.abs(a.duration - b.duration) > 1e-6 || a.velocity !== b.velocity;
   };
-  const tabStages: Record<Tab, Stage[]> = { groove: ["groove"], humanize: ["humanize"], strum: ["strum", "pedal"], connect: [] };
+  const tabStages: Record<Tab, Stage[]> = { groove: ["groove"], humanize: ["humanize"], strum: ["strum", "pedal"], connect: ["connect"] };
   const fillOf = (i: number) => {
     const o = overrides.notes[noteKey(notes[i]!)];
     if (o?.lock) return { fill: color("--text-dim"), alpha: 0.7 };
@@ -729,6 +739,14 @@ function draw() {
       c.setLineDash([]);
     }
   });
+
+  // notes Connect added, in its colour on every tab
+  for (const n of r.added) {
+    c.globalAlpha = 0.95 * velAlpha(n);
+    c.fillStyle = color("--stage-connect");
+    roundRect(c, x(n.startTime) + 0.5, y(n.pitch) + 0.5, Math.max(2, x(n.startTime + n.duration) - x(n.startTime) - 1), noteH);
+    c.fill();
+  }
 
   // how far the open tab's stage moved each note: a line from the previous start
   const activeStage = TABS.find(([id]) => id === tab)![2];
