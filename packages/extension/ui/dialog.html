@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>humino</title>
+    <style>
+      /*STYLES*/
+    </style>
+  </head>
+  <body>
+    <header class="header">
+      <span class="logo">humino</span>
+      <div class="segmented" id="mode" role="radiogroup" aria-label="mode"></div>
+      <div class="preset">
+        <button class="icon" id="prev" aria-label="previous preset">◂</button>
+        <span id="preset-name">—</span>
+        <button class="icon" id="next" aria-label="next preset">▸</button>
+        <button class="icon" id="menu" aria-label="presets" aria-expanded="false">☰</button>
+        <div class="menu" id="menu-panel" hidden>
+          <input id="preset-input" placeholder="preset name" />
+          <button id="save">Save</button>
+          <button id="delete">Delete</button>
+        </div>
+      </div>
+      <span class="seed"><span class="label">seed</span> <span id="seed" class="mono">000</span></span>
+      <button class="icon" id="reseed" aria-label="new seed">⟳</button>
+    </header>
+    <canvas id="preview" class="preview"></canvas>
+    <nav class="tabs" id="tabs" role="tablist"></nav>
+    <main class="params" id="params"></main>
+    <footer class="footer">
+      <span class="count"><span class="dot"></span><span id="count"></span></span>
+      <span class="spacer"></span>
+      <button id="cancel">Cancel</button>
+      <button id="apply" class="primary">Apply</button>
+    </footer>
+    <script>
+      /*DATA*/
+    </script>
+    <script>
+      /*SCRIPT*/
+    </script>
+  </body>
+</html>
