@@ -49,6 +49,15 @@ describe("voice", () => {
   });
 });
 
+describe("voice with a piano bass", () => {
+  it("never puts two strings on the same pitch", () => {
+    for (const ps of [[38, 50, 57, 62, 66], [33, 45, 61, 64, 69], [35, 47, 62, 66, 71]]) {
+      const out = voice(chord(0, ...ps), on).map((n) => n.pitch);
+      expect(new Set(out).size).toBe(out.length);
+    }
+  });
+});
+
 describe("voicedBase", () => {
   it("voices only in guitar mode with voicing on", () => {
     const notes = chord(0, 60, 64, 67);

@@ -31,7 +31,7 @@ const pc = (p: number) => ((p % 12) + 12) % 12;
 
 /**
  * Best playable shape for one chord: one note per string, muted strings only at the
- * edges, the lowest sounding note on the chord's bass pitch class, every pitch class
+ * edges, no two strings on the same pitch, the lowest sounding note on the chord's bass pitch class, every pitch class
  * of the chord sounding (one may go when the chord has five or more). Scored on how
  * far the top and bass move, how far the hand moves from `prev`, and how full it is.
  */
@@ -64,6 +64,7 @@ function bestShape(pitches: number[], open: number[], prev: number | undefined):
       if (sounding.slice(first, last + 1).some((x) => x === null)) return; // inner mute: not strummable
       const notes = sounding.filter((x): x is number => x !== null);
       if (notes.length < Math.min(3, pitches.length)) return;
+      if (new Set(notes).size < notes.length) return; // a MIDI unison: one note would cut the other off
       if (pc(notes[0]!) !== pc(bass)) return;
       const have = new Set(notes.map(pc));
       const missing = [...pcs].filter((x) => !have.has(x)).length;
