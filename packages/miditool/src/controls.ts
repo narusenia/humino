@@ -4,7 +4,7 @@
 // writes params through the same get / set. The 16-step groove table does not
 // fit the 152 × 147 panel and stays in the Extension.
 
-import type { Params } from "@humino/core";
+import { DEFAULT_CONNECT, DEFAULT_GROOVE, DEFAULT_HUMANIZE, DEFAULT_PARAMS, DEFAULT_STRUM, type Params } from "@humino/core";
 
 export const PAGES = ["Hum", "Feel", "Str", "Con"];
 
@@ -65,3 +65,69 @@ export const CONTROLS: Control[] = [
   tab("gracelen", "Grace Len", "Grace note length: 1/32 or 1/16 of a beat.", 3, [54, 94, ROW[1]! + 26], [1 / 32, 1 / 16] as const, ["1/32", "1/16"], (p) => p.connect.graceLength, (p, v) => (p.connect.graceLength = v)),
   tab("rundir", "Run From", "Side the run comes from. Auto follows the previous bass note.", 3, [4, 144], ["auto", "up", "down"] as const, ["Auto", "Below", "Above"], (p) => p.connect.runDirection, (p, v) => (p.connect.runDirection = v)),
 ];
+
+// ---------------------------------------------------------------- devices
+
+/**
+ * humino.amxd holds every control; the others do one stage each and switch the rest off,
+ * so they can be run one after another from the Transform tab.
+ */
+export type Device = {
+  id: string;
+  /** File name without .amxd; Live lists the tool under this name. */
+  file: string;
+  pageNames: string[];
+  /** Control keys per page; dials fill the 3 × 2 grid in this order, tabs keep their place. */
+  pages: string[][];
+  /** Tab positions that differ from the full device: [x, w, y]. */
+  place?: Record<string, [number, number, number]>;
+  params: () => Params;
+};
+
+const zeros = () => new Array<number>(16).fill(0);
+/** Every stage off: humanize at 0, no groove, piano without pedal, Connect off. */
+const neutral = (): Params => ({
+  mode: "piano",
+  groove: { ...DEFAULT_GROOVE, timing: zeros(), velocity: zeros(), swing: 0 },
+  humanize: { ...DEFAULT_HUMANIZE, drift: 0, jitter: 0, spread: 0, velJitter: 0, chordBalance: 0, legato: 0, lengthJitter: 0 },
+  strum: { ...DEFAULT_STRUM },
+  pedal: "off",
+  connect: { ...DEFAULT_CONNECT, on: false },
+});
+const only = (f: (p: Params) => void) => () => {
+  const p = neutral();
+  f(p);
+  return p;
+};
+const keysOn = (page: number) => CONTROLS.filter((c) => c.page === page).map((c) => c.key);
+
+export const DEVICES: Device[] = [
+  { id: "all", file: "humino", pageNames: PAGES, pages: PAGES.map((_, i) => keysOn(i)), params: () => JSON.parse(JSON.stringify(DEFAULT_PARAMS)) as Params },
+  {
+    id: "humanize",
+    file: "humino Humanize",
+    pageNames: ["Main", "Feel"],
+    pages: [keysOn(0), ["beatweight", "chordbal", "driftreturn"]],
+    params: only((p) => (p.humanize = { ...DEFAULT_HUMANIZE })),
+  },
+  { id: "swing", file: "humino Swing", pageNames: ["Swing"], pages: [["swing", "grid"]], params: only((p) => (p.groove.swing = 33)) },
+  { id: "strum", file: "humino Strum", pageNames: ["Strum"], pages: [keysOn(2)], params: only((p) => (p.mode = "guitar")) },
+  { id: "pedal", file: "humino Pedal", pageNames: ["Pedal"], pages: [["pedal"]], place: { pedal: [4, 144, ROW[0]!] }, params: only((p) => (p.pedal = "chord")) },
+  { id: "connect", file: "humino Connect", pageNames: ["Connect"], pages: [keysOn(3)], params: only((p) => (p.connect.on = true)) },
+];
+
+/** The device's controls with their page and position on its panel. */
+export function layout(d: Device): Control[] {
+  return d.pages.flatMap((keys, page) => {
+    let slot = 0;
+    return keys.map((key) => {
+      const c = CONTROLS.find((x) => x.key === key)!;
+      if (c.kind === "dial") {
+        const k = slot++;
+        return { ...c, page, x: COL[k % 3]!, y: ROW[Math.floor(k / 3)]! };
+      }
+      const [x, w, y] = d.place?.[key] ?? [c.x, c.w, c.y];
+      return { ...c, page, x, w, y };
+    });
+  });
+}

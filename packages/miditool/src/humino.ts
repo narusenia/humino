@@ -6,8 +6,8 @@
 // Live re-sends the notes from the start of the apply cycle on every bang, so
 // re-applying never stacks (no original-note store needed, unlike the SDK version).
 
-import { CONTROLS } from "./controls.js";
-import { BUILTIN_PRESETS, DEFAULT_PARAMS, process, type Mode, type Note, type Params, type Scale } from "@humino/core";
+import { DEVICES, layout } from "./controls.js";
+import { BUILTIN_PRESETS, process, type Mode, type Note, type Params, type Scale } from "@humino/core";
 
 type ToolNote = {
   note_id?: number;
@@ -31,7 +31,11 @@ const g = globalThis as Record<string, unknown>;
 g.inlets = 1;
 g.outlets = 4; // 0 notes, 1 bang to live.miditool.in, 2 values back to the controls, 3 thispatcher
 
-let params: Params = JSON.parse(JSON.stringify(DEFAULT_PARAMS)) as Params;
+// build.ts puts `globalThis.HUMINO_DEVICE = "<id>"` before this bundle.
+const device = DEVICES.find((d) => d.id === g.HUMINO_DEVICE) ?? DEVICES[0]!;
+const full = device.id === "all";
+const CONTROLS = layout(device);
+let params: Params = device.params();
 // shortcut: controls report their saved values right after load; ignore them for a moment so
 // loading the device does not transform the selection. Upgrade if Live adds a load-done hook here.
 const loadedAt = Date.now();
@@ -98,7 +102,7 @@ function changed() {
 
 /** Show the controls on the current values without re-triggering them. */
 function showAll() {
-  outlet(2, "mode", params.mode === "guitar" ? 0 : 1);
+  if (full) outlet(2, "mode", params.mode === "guitar" ? 0 : 1);
   for (const c of CONTROLS) outlet(2, c.key, c.get(params));
 }
 
@@ -127,5 +131,5 @@ g.param = (key: string, v: number) => {
 /** Page tab: hide the other pages' controls through [thispatcher]. */
 g.page = (i: number) => {
   for (const c of CONTROLS) outlet(3, "script", c.page === i ? "show" : "hide", c.key);
-  outlet(3, "script", i === 0 ? "show" : "hide", "preset");
+  if (full) outlet(3, "script", i === 0 ? "show" : "hide", "preset");
 };

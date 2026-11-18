@@ -42,14 +42,14 @@ dir = "packages/extension"
 run = "npm run package"
 
 [tasks."miditool:build"]
-description = "Build the MIDI Tools device (packages/miditool/dist/humino.amxd)"
+description = "Build the MIDI Tools devices (packages/miditool/dist/*.amxd)"
 dir = "packages/miditool"
 run = ["npx tsc --noEmit", "npm run build"]
 
 [tasks."miditool:install"]
-description = "Copy humino.amxd into Live's User Library (MIDI Tools > Max Transformations)"
+description = "Copy the humino .amxd devices into Live's User Library (MIDI Tools > Max Transformations)"
 depends = ["miditool:build"]
-run = "cp packages/miditool/dist/humino.amxd \"$HOME/Music/Ableton/User Library/MIDI Tools/Max Transformations/\""
+run = "cp packages/miditool/dist/*.amxd \"$HOME/Music/Ableton/User Library/MIDI Tools/Max Transformations/\""
 
 [tasks."hooks:install"]
 description = "Install lefthook git hooks"

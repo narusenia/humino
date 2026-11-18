@@ -12,7 +12,7 @@ humino is an Ableton Live Extension (Extensions SDK, Live 12 Suite) that humaniz
 ## Layout
 
 - `packages/core`: pure TypeScript, no SDK imports. All note processing lives here. Tested in CI.
-- `packages/miditool`: the MIDI Tools device. `build.ts` bundles core into a `v8.codebox` and writes `dist/humino.amxd` (ADR-0015). Verify with `mise run miditool:build`.
+- `packages/miditool`: the MIDI Tools device. `build.ts` bundles core into a `v8.codebox` and writes `dist/humino.amxd` plus one device per stage (ADR-0015). Verify with `mise run miditool:build`.
 - `packages/extension`: SDK glue (context menus, dialog, storage, transactions) and the dialog UI. Built locally only.
 - `sdk/`: the Ableton Extensions SDK tarballs. Git-ignored; never commit, copy or quote SDK files or docs into the repository (ADR-0012).
 

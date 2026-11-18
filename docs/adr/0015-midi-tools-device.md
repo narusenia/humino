@@ -11,6 +11,7 @@ Extension 版はクリップを右クリックしてダイアログを開く必�
 
 - `packages/miditool` を足し、`build.ts` で core をまとめた JS を `v8.codebox` に埋め込んだ `humino.amxd` を生成する。パッチは手で編集せず、ビルドで作る
 - 配線は `live.miditool.in` → `dict.join`（ノートとコンテキスト）→ `v8.codebox` → `live.miditool.out`
+- 統合版の `humino.amxd` に加えて、処理ごとのデバイス（Humanize、Swing、Strum、Pedal、Connect）も同じ `build.ts` で生成する。コードは 1 つで、どのデバイスかはコードの先頭に入れる `HUMINO_DEVICE` で決める。分けたデバイスは担当しない処理をすべて切り、Mode とプリセットを持たない（2026-11-19 追記）
 - 元のノートは保存しない。MIDI Tools は適用中、つまみを動かすたびに最初のノートを送り直すので、変換が重ならない
 - つまみが動いたら `live.miditool.in` に bang を送り、その場でかけ直す
 - テンポはコンテキストに無いので `LiveAPI("live_set")` から読む。シードはコンテキストの `seed` を使う

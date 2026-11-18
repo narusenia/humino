@@ -7,7 +7,7 @@
 | 01 | core に Connect（経過音、Chromatic Run、前打音）。`Params.connect`、`Context.scale`、足したノートを `Result.notes` に入れる | 完了 |
 | 02 | Extension：Song のスケールを渡す、ダイアログに Connect タブ、足したノートをスカイ色で描く | 完了 |
 | 03 | MIDI Tools：Connect のページ、スケールの受け取り、足したノートの出力 | 完了 |
-| 04 | MIDI Tools：統合版に加えて、機能ごとに分けたデバイスも生成する | 未着手 |
+| 04 | MIDI Tools：統合版に加えて、処理ごとのデバイス（Humanize、Swing、Strum、Pedal、Connect）も生成する | 完了 |
 | 04b | MIDI Tools：つまみとタブに説明（Live の Info View に出る annotation）を付ける | 完了 |
 | 05 | Live で Connect を確かめる（両方の版） | 未着手 |
 | 06 | core にギターボイシング（チューニング、カポ、弦の番号）と、Strum を弦の順にする | 未着手 |
