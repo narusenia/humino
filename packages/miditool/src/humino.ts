@@ -104,6 +104,11 @@ g.preset = (i: number) => {
   outlet(2, "legato", params.humanize.legato);
   outlet(2, "swing", params.groove.swing);
   outlet(2, "strum", params.strum.downSpeed);
+  outlet(2, "grid", params.groove.swingGrid === 8 ? 0 : 1);
+  changed();
+};
+g.grid = (i: number) => {
+  params.groove.swingGrid = i === 0 ? 8 : 16;
   changed();
 };
 g.drift = setter("humanize", "drift");

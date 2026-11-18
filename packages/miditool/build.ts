@@ -52,21 +52,22 @@ wire("code", 0, "out", 0);
 wire("code", 1, "in", 0);
 
 // --- controls (presentation: 152 × 147, the MIDI Tools panel)
-type Dial = { name: string; label: string; max: number; unit: number; init: number; x: number; y: number };
+// 3 dials per row so names and values do not touch; the rarely changed Vel ± is a small number box.
+type Dial = { name: string; label: string; max: number; unit: number; init: number; x: number; y: number; box?: "numbox" };
 const UNIT = { int: 0, ms: 2, pct: 5 };
 const d = DEFAULT_PARAMS;
 const dials: Dial[] = [
-  { name: "drift", label: "Drift", max: 40, unit: UNIT.ms, init: d.humanize.drift, x: 0, y: 24 },
-  { name: "jitter", label: "Jitter", max: 20, unit: UNIT.ms, init: d.humanize.jitter, x: 38, y: 24 },
-  { name: "spread", label: "Spread", max: 20, unit: UNIT.ms, init: d.humanize.spread, x: 76, y: 24 },
-  { name: "vel", label: "Vel ±", max: 30, unit: UNIT.int, init: d.humanize.velJitter, x: 114, y: 24 },
-  { name: "swing", label: "Swing", max: 75, unit: UNIT.pct, init: d.groove.swing, x: 0, y: 86 },
-  { name: "strum", label: "Strum", max: 120, unit: UNIT.ms, init: d.strum.downSpeed, x: 38, y: 86 },
-  { name: "legato", label: "Legato", max: 100, unit: UNIT.pct, init: d.humanize.legato, x: 76, y: 86 },
+  { name: "drift", label: "Drift", max: 40, unit: UNIT.ms, init: d.humanize.drift, x: 4, y: 24 },
+  { name: "jitter", label: "Jitter", max: 20, unit: UNIT.ms, init: d.humanize.jitter, x: 54, y: 24 },
+  { name: "spread", label: "Spread", max: 20, unit: UNIT.ms, init: d.humanize.spread, x: 104, y: 24 },
+  { name: "swing", label: "Swing", max: 75, unit: UNIT.pct, init: d.groove.swing, x: 4, y: 76 },
+  { name: "strum", label: "Strum", max: 120, unit: UNIT.ms, init: d.strum.downSpeed, x: 54, y: 76 },
+  { name: "legato", label: "Legato", max: 100, unit: UNIT.pct, init: d.humanize.legato, x: 104, y: 76 },
+  { name: "vel", label: "Vel ±", max: 30, unit: UNIT.int, init: d.humanize.velJitter, x: 112, y: 128, box: "numbox" },
 ];
 const valueof = (v: Record<string, unknown>) => ({ saved_attribute_attributes: { valueof: v } });
 
-obj("route", `route ${[...dials.map((x) => x.name), "mode"].join(" ")}`, 1, dials.length + 2);
+obj("route", `route ${[...dials.map((x) => x.name), "mode", "grid"].join(" ")}`, 1, dials.length + 3);
 wire("code", 2, "route", 0);
 
 boxes.push({
@@ -108,20 +109,47 @@ obj("p-preset", "prepend preset", 1, 1, { patching_rect: [740, 70, 100, 22] });
 wire("preset", 0, "p-preset", 0);
 wire("p-preset", 0, "code", 0);
 
+// Swing grid: Swing only moves off-beats of this size, so 8th-note parts need "8th".
+boxes.push({
+  id: "grid",
+  maxclass: "live.tab",
+  varname: "Swing Grid",
+  numinlets: 1,
+  numoutlets: 3,
+  outlettype: ["", "", "float"],
+  parameter_enable: 1,
+  num_lines_patching: 1,
+  num_lines_presentation: 1,
+  patching_rect: [640, 260, 70, 20],
+  presentation: 1,
+  presentation_rect: [4, 128, 64, 15],
+  ...valueof({ parameter_enum: ["8th", "16th"], parameter_longname: "Swing Grid", parameter_shortname: "Grid", parameter_type: 2, parameter_mmax: 1, parameter_initial: [d.groove.swingGrid === 8 ? 0 : 1], parameter_initial_enable: 1 }),
+});
+obj("p-grid", "prepend grid", 1, 1, { patching_rect: [640, 290, 90, 22] });
+wire("grid", 0, "p-grid", 0);
+wire("p-grid", 0, "code", 0);
+obj("s-grid", "prepend set", 1, 1, { patching_rect: [720, 260, 80, 22] });
+wire("route", dials.length + 1, "s-grid", 0);
+wire("s-grid", 0, "grid", 0);
+const label = (id: string, text: string, rect: number[]) =>
+  boxes.push({ id, maxclass: "live.comment", text, numinlets: 1, numoutlets: 0, patching_rect: [640, 320, 60, 18], presentation: 1, presentation_rect: rect, textjustification: 2 });
+label("l-vel", "Vel ±", [72, 128, 38, 15]);
+
 dials.forEach((dial, k) => {
   const id = `dial-${dial.name}`;
   const px = 640 + k * 70;
+  const size = dial.box ? [36, 15] : [44, 48];
   boxes.push({
     id,
-    maxclass: "live.dial",
+    maxclass: dial.box ? "live.numbox" : "live.dial",
     varname: dial.label,
     numinlets: 1,
     numoutlets: 2,
     outlettype: ["", "float"],
     parameter_enable: 1,
-    patching_rect: [px, 140, 44, 48],
+    patching_rect: [px, 140, ...size],
     presentation: 1,
-    presentation_rect: [dial.x, dial.y, 38, 48],
+    presentation_rect: [dial.x, dial.y, ...size],
     ...valueof({ parameter_longname: dial.label, parameter_shortname: dial.label, parameter_type: 0, parameter_mmin: 0, parameter_mmax: dial.max, parameter_unitstyle: dial.unit, parameter_initial: [dial.init], parameter_initial_enable: 1 }),
   });
   obj(`p-${dial.name}`, `prepend ${dial.name}`, 1, 1, { patching_rect: [px, 200, 66, 22] });
