@@ -4,6 +4,7 @@ import { analyze, msToBeats, targetGroups, type Analysis } from "./analysis.js";
 import { applyGroove, DEFAULT_GROOVE, type GrooveParams } from "./groove.js";
 import { applyHumanize, DEFAULT_HUMANIZE, type HumanizeParams } from "./humanize.js";
 import { applyPedal, type PedalMode } from "./pedal.js";
+import { applyConnect, DEFAULT_CONNECT, type ConnectParams } from "./connect.js";
 import { createRng } from "./rng.js";
 import { applyStrum, chordKey, DEFAULT_STRUM, type ChordOverride, type StrumParams } from "./strum.js";
 import { clampVelocity, DEFAULT_VELOCITY, type Context, type Note } from "./types.js";
@@ -18,6 +19,7 @@ export type Params = {
   strum: StrumParams;
   /** Piano mode only. */
   pedal: PedalMode;
+  connect: ConnectParams;
 };
 
 export const DEFAULT_PARAMS: Params = {
@@ -26,6 +28,7 @@ export const DEFAULT_PARAMS: Params = {
   humanize: DEFAULT_HUMANIZE,
   strum: DEFAULT_STRUM,
   pedal: "off",
+  connect: DEFAULT_CONNECT,
 };
 
 /** Fills fields missing from settings saved by an older version with the defaults. */
@@ -36,15 +39,18 @@ export function completeParams(p: Params): Params {
     groove: { ...DEFAULT_PARAMS.groove, ...p.groove },
     humanize: { ...DEFAULT_PARAMS.humanize, ...p.humanize },
     strum: { ...DEFAULT_PARAMS.strum, ...p.strum },
+    connect: { ...DEFAULT_PARAMS.connect, ...p.connect },
   };
 }
 
-export const STAGES = ["groove", "humanize", "strum", "pedal"] as const;
+export const STAGES = ["groove", "humanize", "strum", "pedal", "connect"] as const;
 export type Stage = (typeof STAGES)[number];
 
 export type Result = {
-  /** Output notes (upstroke-skipped notes removed). */
+  /** Output notes (upstroke-skipped notes removed, Connect's notes appended). */
   notes: Note[];
+  /** Notes Connect added (also at the end of `notes`). */
+  added: Note[];
   /** Notes after each stage, index-aligned with the input, for the preview. */
   snapshots: Record<Stage, Note[]>;
   /** After hand edits (lock, nudge), index-aligned with the input. */
@@ -79,7 +85,7 @@ export const noteKey = (n: Note) => `${n.pitch}@${chordKey(n.startTime)}`;
 const stageRng = (seed: number, k: number) => createRng((seed ^ Math.imul(k + 1, 0x9e3779b9)) >>> 0);
 
 /**
- * Groove → Humanize → Strum → Pedal (ADR-0004), then hand edits.
+ * Groove → Humanize → Strum → Pedal → Connect (ADR-0004), then hand edits.
  * Pure: `notes` is not modified.
  */
 export function process(notes: readonly Note[], p: Params, ctx: Context, ov: Overrides = {}): Result {
@@ -99,6 +105,8 @@ export function process(notes: readonly Note[], p: Params, ctx: Context, ov: Ove
   const strum = snap();
   applyPedal(work, a, target, p.mode === "piano" ? p.pedal : "off", ctx.clipEnd);
   const pedal = snap();
+  const added = applyConnect(work, a, target, dropped, p.connect, ctx.scale, stageRng(ctx.seed, 3));
+  const connect = snap();
 
   // Hand edits last, so they hold whatever the seed or the amounts do.
   notes.forEach((orig, i) => {
@@ -115,8 +123,9 @@ export function process(notes: readonly Note[], p: Params, ctx: Context, ov: Ove
   });
 
   return {
-    notes: work.filter((_, i) => !dropped.has(i)),
-    snapshots: { groove, humanize, strum, pedal },
+    notes: [...work.filter((_, i) => !dropped.has(i)), ...added],
+    added,
+    snapshots: { groove, humanize, strum, pedal, connect },
     final: work,
     dropped,
     analysis: a,

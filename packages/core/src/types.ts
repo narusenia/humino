@@ -26,6 +26,8 @@ export type Context = {
   beatsPerBar?: number;
   /** Clip end in beats (the clip's loop end); defaults to the last note end. */
   clipEnd?: number;
+  /** Live's scale when Scale Mode is on (Connect's passing tones). */
+  scale?: { root: number; intervals: number[] };
 };
 
 export const DEFAULT_VELOCITY = 100;

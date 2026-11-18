@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 
+import { DEFAULT_CONNECT } from "./connect.js";
 import { DEFAULT_GROOVE } from "./groove.js";
 import { DEFAULT_HUMANIZE } from "./humanize.js";
 import { DEFAULT_PARAMS, type Mode, type Params } from "./pipeline.js";
@@ -28,6 +29,7 @@ const make = (name: string, mode: Mode | "any", patch: Patch): Preset => ({
     humanize: { ...DEFAULT_HUMANIZE, ...patch.humanize },
     strum: { ...DEFAULT_STRUM, ...patch.strum },
     pedal: patch.pedal ?? "off",
+    connect: DEFAULT_CONNECT,
   },
 });
 
