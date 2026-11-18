@@ -6,6 +6,7 @@
 // Live re-sends the notes from the start of the apply cycle on every bang, so
 // re-applying never stacks (no original-note store needed, unlike the SDK version).
 
+import { CONTROLS } from "./controls.js";
 import { BUILTIN_PRESETS, DEFAULT_PARAMS, process, type Mode, type Note, type Params } from "@humino/core";
 
 type ToolNote = {
@@ -27,7 +28,7 @@ type ToolInput = {
 
 const g = globalThis as Record<string, unknown>;
 g.inlets = 1;
-g.outlets = 3; // 0 notes, 1 bang to live.miditool.in, 2 control values back to the dials
+g.outlets = 4; // 0 notes, 1 bang to live.miditool.in, 2 values back to the controls, 3 thispatcher
 
 let params: Params = JSON.parse(JSON.stringify(DEFAULT_PARAMS)) as Params;
 // shortcut: controls report their saved values right after load; ignore them for a moment so
@@ -77,14 +78,13 @@ function changed() {
   outlet(1, "bang");
 }
 
-const setter =
-  <K extends keyof Params, F extends keyof Params[K]>(section: K, field: F) =>
-  (v: number) => {
-    (params[section] as Record<F, number>)[field] = v;
-    changed();
-  };
+/** Show the controls on the current values without re-triggering them. */
+function showAll() {
+  outlet(2, "mode", params.mode === "guitar" ? 0 : 1);
+  for (const c of CONTROLS) outlet(2, c.key, c.get(params));
+}
 
-// Messages from the device's controls ([prepend <name>] → this).
+// Messages from the device's controls ([prepend ...] → this).
 g.mode = (i: number) => {
   params.mode = (["guitar", "piano"] as Mode[])[i] ?? "piano";
   changed();
@@ -95,30 +95,17 @@ g.preset = (i: number) => {
   const mode = params.mode;
   params = JSON.parse(JSON.stringify(p.params)) as Params;
   params.mode = p.mode === "any" ? mode : p.mode;
-  // show the preset's values on the dials without re-triggering them
-  outlet(2, "mode", params.mode === "guitar" ? 0 : 1);
-  outlet(2, "drift", params.humanize.drift);
-  outlet(2, "jitter", params.humanize.jitter);
-  outlet(2, "spread", params.humanize.spread);
-  outlet(2, "vel", params.humanize.velJitter);
-  outlet(2, "legato", params.humanize.legato);
-  outlet(2, "swing", params.groove.swing);
-  outlet(2, "strum", params.strum.downSpeed);
-  outlet(2, "grid", params.groove.swingGrid === 8 ? 0 : 1);
+  showAll();
   changed();
 };
-g.grid = (i: number) => {
-  params.groove.swingGrid = i === 0 ? 8 : 16;
+/** [prepend param <key>] from every dial and tab in CONTROLS. */
+g.param = (key: string, v: number) => {
+  const c = CONTROLS.find((x) => x.key === key);
+  if (!c) return;
+  c.set(params, v);
   changed();
 };
-g.drift = setter("humanize", "drift");
-g.jitter = setter("humanize", "jitter");
-g.spread = setter("humanize", "spread");
-g.vel = setter("humanize", "velJitter");
-g.legato = setter("humanize", "legato");
-g.swing = setter("groove", "swing");
-g.strum = (ms: number) => {
-  params.strum.downSpeed = ms;
-  params.strum.upSpeed = Math.round(ms * (DEFAULT_PARAMS.strum.upSpeed / DEFAULT_PARAMS.strum.downSpeed));
-  changed();
+/** Page tab: hide the other pages' controls through [thispatcher]. */
+g.page = (i: number) => {
+  for (const c of CONTROLS) outlet(3, "script", c.page === i ? "show" : "hide", c.key);
 };

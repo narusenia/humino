@@ -32,7 +32,7 @@ MIDI クリップを右クリックして、次のどれかを選びます。
 
 `humino.amxd` は Live 12 Suite の MIDI Tools で使う Transformation（Max for Live）です。ピアノロールで選んだノートにかかり、つまみを回すとその場でかけ直すので、聴きながら調整できます。
 
-`humino.amxd` を `User Library/MIDI Tools/Max Transformations/` に置き、クリップビューの Transform タブで humino を選びます。パネルにあるのは Mode、プリセット、Drift、Jitter、Spread、Vel ±、Swing、Swing Grid（8th / 16th）、Strum、Legato です。Groove の表やそのほかの設定、手での修正は Extension 版だけで使えます。
+`humino.amxd` を `User Library/MIDI Tools/Max Transformations/` に置き、クリップビューの Transform タブで humino を選びます。パネルの上に Mode とプリセットがあり、その下を 3 つのページで切り替えます。Hum は揺れ、Spread、ベロシティ、ノート長、レガート、Feel は Swing、Swing Grid、Beat Weight、Chord Balance、Drift Return、ペダル、Strum はストロークの速さと揺れ、Taper、Up Skip、Overlap、向き、Motion、Anchor です。Groove の 16 ステップの表と手での修正は Extension 版だけで使えます。
 
 ## 機能
 

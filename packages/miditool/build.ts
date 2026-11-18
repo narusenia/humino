@@ -6,6 +6,7 @@
 import * as esbuild from "esbuild";
 import * as fs from "node:fs";
 import { BUILTIN_PRESETS, DEFAULT_PARAMS } from "@humino/core";
+import { CONTROLS, PAGES } from "./src/controls.js";
 
 const js = (
   await esbuild.build({
@@ -40,8 +41,8 @@ boxes.push({
   fontname: "<Monospaced>",
   fontsize: 10,
   numinlets: 1,
-  numoutlets: 3,
-  outlettype: ["", "", ""],
+  numoutlets: 4,
+  outlettype: ["", "", "", ""],
   patching_rect: [200, 40, 400, 300],
 });
 obj("out", "live.miditool.out", 1, 0);
@@ -52,112 +53,62 @@ wire("code", 0, "out", 0);
 wire("code", 1, "in", 0);
 
 // --- controls (presentation: 152 × 147, the MIDI Tools panel)
-// 3 dials per row so names and values do not touch; the rarely changed Vel ± is a small number box.
-type Dial = { name: string; label: string; max: number; unit: number; init: number; x: number; y: number; box?: "numbox" };
-const UNIT = { int: 0, ms: 2, pct: 5 };
+// Header: mode + preset, then a page tab; each page shows its CONTROLS (src/controls.ts).
 const d = DEFAULT_PARAMS;
-const dials: Dial[] = [
-  { name: "drift", label: "Drift", max: 40, unit: UNIT.ms, init: d.humanize.drift, x: 4, y: 24 },
-  { name: "jitter", label: "Jitter", max: 20, unit: UNIT.ms, init: d.humanize.jitter, x: 54, y: 24 },
-  { name: "spread", label: "Spread", max: 20, unit: UNIT.ms, init: d.humanize.spread, x: 104, y: 24 },
-  { name: "swing", label: "Swing", max: 75, unit: UNIT.pct, init: d.groove.swing, x: 4, y: 76 },
-  { name: "strum", label: "Strum", max: 120, unit: UNIT.ms, init: d.strum.downSpeed, x: 54, y: 76 },
-  { name: "legato", label: "Legato", max: 100, unit: UNIT.pct, init: d.humanize.legato, x: 104, y: 76 },
-  { name: "vel", label: "Vel ±", max: 30, unit: UNIT.int, init: d.humanize.velJitter, x: 112, y: 128, box: "numbox" },
-];
 const valueof = (v: Record<string, unknown>) => ({ saved_attribute_attributes: { valueof: v } });
+const enumParam = (longname: string, short: string, names: string[], initial: number) =>
+  valueof({ parameter_enum: names, parameter_longname: longname, parameter_shortname: short, parameter_type: 2, parameter_mmax: names.length - 1, parameter_initial: [initial], parameter_initial_enable: 1 });
+const tabBox = (id: string, rect: number[], px: number, py: number, hidden: boolean, param: object) =>
+  boxes.push({
+    id, maxclass: "live.tab", varname: id, numinlets: 1, numoutlets: 3, outlettype: ["", "", "float"], parameter_enable: 1,
+    num_lines_patching: 1, num_lines_presentation: 1, patching_rect: [px, py, rect[2], rect[3]], presentation: 1, presentation_rect: rect,
+    ...(hidden && { hidden: 1 }), ...param,
+  });
 
-obj("route", `route ${[...dials.map((x) => x.name), "mode", "grid"].join(" ")}`, 1, dials.length + 3);
+obj("route", `route mode ${CONTROLS.map((c) => c.key).join(" ")}`, 1, CONTROLS.length + 2, { patching_rect: [200, 360, 400, 22] });
 wire("code", 2, "route", 0);
+obj("thispatcher", "thispatcher", 1, 2, { patching_rect: [200, 400, 80, 22] });
+wire("code", 3, "thispatcher", 0);
 
-boxes.push({
-  id: "mode",
-  maxclass: "live.tab",
-  varname: "Mode",
-  numinlets: 1,
-  numoutlets: 3,
-  outlettype: ["", "", "float"],
-  parameter_enable: 1,
-  num_lines_patching: 1,
-  num_lines_presentation: 1,
-  patching_rect: [640, 40, 70, 20],
-  presentation: 1,
-  presentation_rect: [4, 2, 64, 17],
-  ...valueof({ parameter_enum: ["Gtr", "Pno"], parameter_longname: "Mode", parameter_shortname: "Mode", parameter_type: 2, parameter_mmax: 1, parameter_initial: [d.mode === "guitar" ? 0 : 1], parameter_initial_enable: 1 }),
-});
-obj("p-mode", "prepend mode", 1, 1, { patching_rect: [640, 70, 90, 22] });
+tabBox("mode", [4, 2, 64, 15], 640, 10, false, enumParam("Mode", "Mode", ["Gtr", "Pno"], d.mode === "guitar" ? 0 : 1));
+obj("p-mode", "prepend mode", 1, 1, { patching_rect: [640, 34, 90, 22] });
 wire("mode", 0, "p-mode", 0);
 wire("p-mode", 0, "code", 0);
-obj("s-mode", "prepend set", 1, 1, { patching_rect: [640, 10, 80, 22] });
-wire("route", dials.length, "s-mode", 0);
+obj("s-mode", "prepend set", 1, 1, { patching_rect: [720, 10, 70, 22] });
+wire("route", 0, "s-mode", 0);
 wire("s-mode", 0, "mode", 0);
 
 boxes.push({
-  id: "preset",
-  maxclass: "live.menu",
-  varname: "Preset",
-  numinlets: 1,
-  numoutlets: 3,
-  outlettype: ["", "", "float"],
-  parameter_enable: 1,
-  patching_rect: [740, 40, 100, 20],
-  presentation: 1,
-  presentation_rect: [72, 2, 76, 17],
-  ...valueof({ parameter_enum: BUILTIN_PRESETS.map((p) => p.name), parameter_longname: "Preset", parameter_shortname: "Preset", parameter_type: 2, parameter_mmax: BUILTIN_PRESETS.length - 1, parameter_initial: [0], parameter_initial_enable: 1 }),
+  id: "preset", maxclass: "live.menu", varname: "preset", numinlets: 1, numoutlets: 3, outlettype: ["", "", "float"], parameter_enable: 1,
+  patching_rect: [800, 10, 100, 15], presentation: 1, presentation_rect: [72, 2, 76, 15],
+  ...enumParam("Preset", "Preset", BUILTIN_PRESETS.map((p) => p.name), 0),
 });
-obj("p-preset", "prepend preset", 1, 1, { patching_rect: [740, 70, 100, 22] });
+obj("p-preset", "prepend preset", 1, 1, { patching_rect: [800, 34, 100, 22] });
 wire("preset", 0, "p-preset", 0);
 wire("p-preset", 0, "code", 0);
 
-// Swing grid: Swing only moves off-beats of this size, so 8th-note parts need "8th".
-boxes.push({
-  id: "grid",
-  maxclass: "live.tab",
-  varname: "Swing Grid",
-  numinlets: 1,
-  numoutlets: 3,
-  outlettype: ["", "", "float"],
-  parameter_enable: 1,
-  num_lines_patching: 1,
-  num_lines_presentation: 1,
-  patching_rect: [640, 260, 70, 20],
-  presentation: 1,
-  presentation_rect: [4, 128, 64, 15],
-  ...valueof({ parameter_enum: ["8th", "16th"], parameter_longname: "Swing Grid", parameter_shortname: "Grid", parameter_type: 2, parameter_mmax: 1, parameter_initial: [d.groove.swingGrid === 8 ? 0 : 1], parameter_initial_enable: 1 }),
-});
-obj("p-grid", "prepend grid", 1, 1, { patching_rect: [640, 290, 90, 22] });
-wire("grid", 0, "p-grid", 0);
-wire("p-grid", 0, "code", 0);
-obj("s-grid", "prepend set", 1, 1, { patching_rect: [720, 260, 80, 22] });
-wire("route", dials.length + 1, "s-grid", 0);
-wire("s-grid", 0, "grid", 0);
-const label = (id: string, text: string, rect: number[]) =>
-  boxes.push({ id, maxclass: "live.comment", text, numinlets: 1, numoutlets: 0, patching_rect: [640, 320, 60, 18], presentation: 1, presentation_rect: rect, textjustification: 2 });
-label("l-vel", "Vel ±", [72, 128, 38, 15]);
+tabBox("page", [4, 19, 144, 14], 920, 10, false, enumParam("Page", "Page", PAGES, 0));
+obj("p-page", "prepend page", 1, 1, { patching_rect: [920, 34, 90, 22] });
+wire("page", 0, "p-page", 0);
+wire("p-page", 0, "code", 0);
 
-dials.forEach((dial, k) => {
-  const id = `dial-${dial.name}`;
-  const px = 640 + k * 70;
-  const size = dial.box ? [36, 15] : [44, 48];
-  boxes.push({
-    id,
-    maxclass: dial.box ? "live.numbox" : "live.dial",
-    varname: dial.label,
-    numinlets: 1,
-    numoutlets: 2,
-    outlettype: ["", "float"],
-    parameter_enable: 1,
-    patching_rect: [px, 140, ...size],
-    presentation: 1,
-    presentation_rect: [dial.x, dial.y, ...size],
-    ...valueof({ parameter_longname: dial.label, parameter_shortname: dial.label, parameter_type: 0, parameter_mmin: 0, parameter_mmax: dial.max, parameter_unitstyle: dial.unit, parameter_initial: [dial.init], parameter_initial_enable: 1 }),
-  });
-  obj(`p-${dial.name}`, `prepend ${dial.name}`, 1, 1, { patching_rect: [px, 200, 66, 22] });
-  obj(`s-${dial.name}`, "prepend set", 1, 1, { patching_rect: [px, 110, 66, 22] });
-  wire(id, 0, `p-${dial.name}`, 0);
-  wire(`p-${dial.name}`, 0, "code", 0);
-  wire("route", k, `s-${dial.name}`, 0);
-  wire(`s-${dial.name}`, 0, id, 0);
+CONTROLS.forEach((c, k) => {
+  const px = 640 + (k % 8) * 70;
+  const py = 80 + Math.floor(k / 8) * 120;
+  const hidden = c.page !== 0;
+  if (c.kind === "tab") tabBox(c.key, [c.x, c.y, c.w, 15], px, py, hidden, enumParam(c.label, c.label, c.options, c.get(d)));
+  else
+    boxes.push({
+      id: c.key, maxclass: "live.dial", varname: c.key, numinlets: 1, numoutlets: 2, outlettype: ["", "float"], parameter_enable: 1,
+      patching_rect: [px, py, 44, 46], presentation: 1, presentation_rect: [c.x, c.y, 44, 46], ...(hidden && { hidden: 1 }),
+      ...valueof({ parameter_longname: c.label, parameter_shortname: c.label, parameter_type: 0, parameter_mmin: 0, parameter_mmax: c.max, parameter_unitstyle: c.unit, parameter_initial: [c.get(d)], parameter_initial_enable: 1 }),
+    });
+  obj(`p-${c.key}`, `prepend param ${c.key}`, 1, 1, { patching_rect: [px, py + 56, 66, 22] });
+  obj(`s-${c.key}`, "prepend set", 1, 1, { patching_rect: [px, py - 26, 66, 22] });
+  wire(c.key, 0, `p-${c.key}`, 0);
+  wire(`p-${c.key}`, 0, "code", 0);
+  wire("route", k + 1, `s-${c.key}`, 0);
+  wire(`s-${c.key}`, 0, c.key, 0);
 });
 
 const patcher = {
