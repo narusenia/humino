@@ -28,3 +28,5 @@ export type Context = {
 
 export const DEFAULT_VELOCITY = 100;
 export const MIN_DURATION = 1 / 64;
+
+export const clampVelocity = (v: number) => Math.min(127, Math.max(1, Math.round(v)));
