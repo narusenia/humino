@@ -30,6 +30,7 @@ const make = (name: string, mode: Mode | "any", patch: Patch): Preset => ({
     strum: { ...DEFAULT_STRUM, ...patch.strum },
     pedal: patch.pedal ?? "off",
     connect: DEFAULT_CONNECT,
+    chordWindow: DEFAULT_PARAMS.chordWindow,
   },
 });
 

@@ -55,3 +55,14 @@ describe("targetGroups", () => {
 it("msToBeats", () => {
   expect(msToBeats(500, 120)).toBe(1);
 });
+
+describe("chord window", () => {
+  it("joins a chord played slightly off the grid when the window allows it", () => {
+    const loose = [0, 0.02, 0.035].map((startTime, i) => ({ pitch: 60 + i * 4, startTime, duration: 1 }));
+    expect(analyze(loose).groups).toHaveLength(3);
+    const a = analyze(loose, 4, 0.05);
+    expect(a.groups).toHaveLength(1);
+    const late = analyze(loose.map((n) => ({ ...n, startTime: n.startTime + 1.02 })), 4, 0.05);
+    expect(late.groups[0]!.level).toBe(2); // 0.02 beat late is still on beat 2
+  });
+});

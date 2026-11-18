@@ -66,7 +66,7 @@ export function activate(activation: ActivationContext) {
             const last = store.last();
             const params = { ...(last?.params ?? DEFAULT_PARAMS), mode: "guitar" as const };
             // keep the last seed so only the stroke direction changes
-            applyToClip(clip, { ...s, overrides: forceDirection(s, dir) }, params, last?.seed ?? newSeed(), store, transaction);
+            applyToClip(clip, { ...s, overrides: forceDirection(s, dir, params) }, params, last?.seed ?? newSeed(), store, transaction);
           },
         ] as [string, string, (clip: MidiClip<"1.0.0">) => void],
     ),

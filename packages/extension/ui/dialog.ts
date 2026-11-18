@@ -69,7 +69,8 @@ const presetsOut = () => (presetsChanged ? { presets: userPresets } : {});
 type Section = "groove" | "humanize" | "strum" | "connect";
 type NumDef = {
   kind: "num";
-  section: Section;
+  /** "pedal" means a top-level field of Params. */
+  section: Section | "pedal";
   key: string;
   label: string;
   min: number;
@@ -101,6 +102,7 @@ const HUMANIZE: Def[] = [
   { kind: "num", section: "humanize", key: "chordBalance", label: "chord bal", min: 0, max: 100, step: 1, unit: "%", tip: ["Louder top and bass, softer inner notes", "和音の最高音と最低音を強く、中の音を弱く"] },
   { kind: "num", section: "humanize", key: "legato", label: "legato", min: 0, max: 100, step: 1, unit: "%", tip: ["Closes the gap to the next note", "次のノートとの隙間を詰める"] },
   { kind: "num", section: "humanize", key: "lengthJitter", label: "length ±", min: 0, max: 30, step: 1, unit: "%", tip: ["Random length change", "ノート長のランダムな増減"] },
+  { kind: "num", section: "pedal", key: "chordWindow", label: "chord window", min: 0, max: 50, step: 1, unit: "ms", advanced: true, tip: ["Notes starting this close together count as one chord, so chords played a little off the grid are still chords", "この間隔の中で始まる音を 1 つの和音とみなす。グリッドから少しずれた和音もまとめて扱える"] },
   { kind: "num", section: "humanize", key: "driftReturn", label: "drift return", min: 0, max: 1, step: 0.01, advanced: true, tip: ["How fast the drift comes back to the grid", "揺れがグリッドへ戻る速さ"] },
 ];
 

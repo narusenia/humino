@@ -20,6 +20,8 @@ export type Params = {
   /** Piano mode only. */
   pedal: PedalMode;
   connect: ConnectParams;
+  /** ms: notes starting this close together are one chord, so slightly off-grid chords still count. */
+  chordWindow: number;
 };
 
 export const DEFAULT_PARAMS: Params = {
@@ -29,7 +31,11 @@ export const DEFAULT_PARAMS: Params = {
   strum: DEFAULT_STRUM,
   pedal: "off",
   connect: DEFAULT_CONNECT,
+  chordWindow: 5,
 };
+
+/** `chordWindow` in beats at `tempo`, for `analyze`. */
+export const chordWindowBeats = (p: Params, tempo: number) => Math.max(1e-6, msToBeats(p.chordWindow, tempo));
 
 /** Fills fields missing from settings saved by an older version with the defaults. */
 export function completeParams(p: Params): Params {
@@ -89,7 +95,7 @@ const stageRng = (seed: number, k: number) => createRng((seed ^ Math.imul(k + 1,
  * Pure: `notes` is not modified.
  */
 export function process(notes: readonly Note[], p: Params, ctx: Context, ov: Overrides = {}): Result {
-  const a = analyze(notes, ctx.beatsPerBar ?? 4);
+  const a = analyze(notes, ctx.beatsPerBar ?? 4, chordWindowBeats(p, ctx.tempo));
   const target = targetGroups(notes, a);
   const work = notes.map((n) => ({ ...n }));
   const snap = () => work.map((n) => ({ ...n }));

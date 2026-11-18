@@ -2,25 +2,25 @@
 
 import type { Note } from "./types.js";
 
-/** Notes starting closer than this are one chord (design.md). */
+/** Notes starting closer than this are one chord (design.md); `Params.chordWindow` overrides it. */
 export const CHORD_EPS = 1 / 128;
 
 export const msToBeats = (ms: number, tempo: number) => (ms * tempo) / 60000;
 
-const near = (x: number) => Math.abs(x - Math.round(x)) < 1e-3;
+const near = (x: number, tol = 1e-3) => Math.abs(x - Math.round(x)) < tol;
 
 /**
  * Metric level of a position: 0 bar downbeat, 1 beat 3 (4/4), 2 other beats,
  * 3 off-beat 8th (or triplet), 4 anything finer.
  */
-export function metricLevel(start: number, beatsPerBar: number, triplet: boolean): number {
+export function metricLevel(start: number, beatsPerBar: number, triplet: boolean, tol = 1e-3): number {
   const b = ((start % beatsPerBar) + beatsPerBar) % beatsPerBar;
-  if (near(b)) {
+  if (near(b, tol)) {
     const k = Math.round(b) % beatsPerBar;
     if (k === 0) return 0;
     return beatsPerBar === 4 && k === 2 ? 1 : 2;
   }
-  return near(b * (triplet ? 3 : 2)) ? 3 : 4;
+  return near(b * (triplet ? 3 : 2), tol * (triplet ? 3 : 2)) ? 3 : 4;
 }
 
 export type Group = {
@@ -42,7 +42,10 @@ export type Analysis = {
   beatsPerBar: number;
 };
 
-export function analyze(notes: readonly Note[], beatsPerBar = 4): Analysis {
+/** `window`: notes starting within this many beats of a chord's first note join it, and a chord
+ * that far off a beat still counts as on it (off-grid playing). */
+export function analyze(notes: readonly Note[], beatsPerBar = 4, window = CHORD_EPS): Analysis {
+  const tol = Math.max(1e-3, window);
   // Majority vote, so one triplet fill does not turn a straight clip (and its swing) off.
   const tripletOnly = notes.filter((n) => !near(n.startTime * 4) && near(n.startTime * 6)).length;
   const straightOnly = notes.filter((n) => near(n.startTime * 4) && !near(n.startTime * 3)).length;
@@ -56,11 +59,11 @@ export function analyze(notes: readonly Note[], beatsPerBar = 4): Analysis {
   for (const i of order) {
     const start = notes[i]!.startTime;
     let g = groups[groups.length - 1];
-    if (!g || start - g.start >= CHORD_EPS) {
+    if (!g || start - g.start >= window) {
       g = {
         start,
         idx: [],
-        level: metricLevel(start, beatsPerBar, triplet),
+        level: metricLevel(start, beatsPerBar, triplet, tol),
         step: ((Math.round(start * stepsPerBeat) % stepsPerBar) + stepsPerBar) % stepsPerBar,
       };
       groups.push(g);

@@ -50,6 +50,7 @@ export const CONTROLS: Control[] = [
   dial("beatweight", "Beat Wt", "Keeps strong beats tighter than off-beats.", 1, 1, 100, UNIT.pct, (p) => p.humanize.beatWeight, (p, v) => (p.humanize.beatWeight = v)),
   dial("chordbal", "Chord Bal", "Louder top and bass notes, softer inner notes.", 1, 2, 100, UNIT.pct, (p) => p.humanize.chordBalance, (p, v) => (p.humanize.chordBalance = v)),
   dial("driftreturn", "Drift Ret", "How fast the drift comes back to the grid.", 1, 3, 100, UNIT.pct, (p) => Math.round(p.humanize.driftReturn * 100), (p, v) => (p.humanize.driftReturn = v / 100)),
+  dial("chordwin", "Chord Win", "Notes starting this close together count as one chord, so chords played a little off the grid are still chords.", 1, 4, 50, UNIT.ms, (p) => p.chordWindow, (p, v) => (p.chordWindow = v)),
   tab("grid", "Swing Grid", "Which off-beats swing: 8th or 16th notes.", 1, [4, 64], [8, 16] as const, ["8th", "16th"], (p) => p.groove.swingGrid, (p, v) => (p.groove.swingGrid = v)),
   tab("pedal", "Pedal", "Piano: hold notes to the end of the bar or chord.", 1, [76, 72], ["off", "bar", "chord"] as const, ["Off", "Bar", "Chd"], (p) => p.pedal, (p, v) => (p.pedal = v)),
   // Strum
@@ -117,6 +118,7 @@ const neutral = (): Params => ({
   strum: { ...DEFAULT_STRUM },
   pedal: "off",
   connect: { ...DEFAULT_CONNECT },
+  chordWindow: DEFAULT_PARAMS.chordWindow,
 });
 const only = (f: (p: Params) => void) => () => {
   const p = neutral();
@@ -131,7 +133,7 @@ export const DEVICES: Device[] = [
     id: "humanize",
     file: "humino Humanize",
     pageNames: ["Main", "Feel"],
-    pages: [keysOn(0), ["beatweight", "chordbal", "driftreturn"]],
+    pages: [keysOn(0), ["beatweight", "chordbal", "driftreturn", "chordwin"]],
     params: only((p) => (p.humanize = { ...DEFAULT_HUMANIZE })),
   },
   {
@@ -144,13 +146,13 @@ export const DEVICES: Device[] = [
     hide: ["swing"],
     params: only((p) => (p.groove.swing = 33)),
   },
-  { id: "strum", file: "humino Strum", pageNames: ["Strum"], pages: [keysOn(2)], params: only((p) => (p.mode = "guitar")) },
+  { id: "strum", file: "humino Strum", pageNames: ["Strum", "Chords"], pages: [keysOn(2), ["chordwin"]], params: only((p) => (p.mode = "guitar")) },
   { id: "pedal", file: "humino Pedal", pageNames: ["Pedal"], pages: [["pedal"]], place: { pedal: [4, 144, 4] }, view: [4, 23, 144, 120], params: only((p) => (p.pedal = "chord")) },
   {
     id: "connect",
     file: "humino Connect",
     pageNames: ["Run", "Grace"],
-    pages: [keysOn(3), keysOn(4)],
+    pages: [keysOn(3), [...keysOn(4), "chordwin"]],
     params: only((p) => Object.assign(p.connect, { chromaticOn: true, passingOn: true, graceOn: true })),
   },
 ];

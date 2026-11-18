@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 import type { MidiClip, NoteDescription } from "@ableton-extensions/sdk";
-import { analyze, chordKey, hashNotes, process, targetGroups, type Direction, type Note, type Overrides, type Params, type Scale } from "@humino/core";
+import { analyze, chordKey, chordWindowBeats, hashNotes, process, targetGroups, type Direction, type Note, type Overrides, type Params, type Scale } from "@humino/core";
 import type { Store } from "./store.js";
 
 export const newSeed = () => Math.floor(Math.random() * 1000);
@@ -55,8 +55,8 @@ const fromForced = (forced: Record<string, Direction> = {}): Overrides => ({
 });
 
 /** Strum Down / Up: fix the direction of the targeted chords. */
-export function forceDirection(state: ClipState, dir: Direction): Overrides {
-  const a = analyze(state.original);
+export function forceDirection(state: ClipState, dir: Direction, params: Params): Overrides {
+  const a = analyze(state.original, 4, chordWindowBeats(params, state.tempo));
   const target = targetGroups(state.original, a);
   const chords = { ...state.overrides.chords };
   a.groups.forEach((g, gi) => {
