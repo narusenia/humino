@@ -32,7 +32,7 @@ MIDI クリップを右クリックして、次のどれかを選びます。
 
 `humino.amxd` は Live 12 Suite の MIDI Tools で使う Transformation（Max for Live）です。ピアノロールで選んだノートにかかり、つまみを回すとその場でかけ直すので、聴きながら調整できます。
 
-Releases から `humino.amxd` をダウンロードし、`User Library/MIDI Tools/Max Transformations/` に置き、クリップビューの Transform タブで humino を選びます。パネルの上のタブで 5 つのページを切り替えます。Mode もその横にあり、プリセットは Hum ページの下にあります。Hum は揺れ、Spread、ベロシティ、ノート長、レガート、Feel は Swing、Swing Grid、Beat Weight、Chord Balance、Drift Return、ペダル、Str はストロークの速さと揺れ、Taper、Up Skip、Overlap、向き、Motion、Anchor、Run は Chromatic Run と経過音、Grc は前打音です。Connect の 3 種類はそれぞれ on のボタンとベロシティを持ち、on にするまで何もしません。今のモードで使わないつまみは灰色になります。つまみにマウスを乗せると、Live の Info View に説明が出ます。Groove の 16 ステップの表と手での修正は Extension 版だけで使えます。
+Releases から `humino.amxd` をダウンロードし、`User Library/MIDI Tools/Max Transformations/` に置き、クリップビューの Transform タブで humino を選びます。パネルの上のタブで 4 つのページを切り替えます。Mode もその横にあり、プリセットは Hum ページの下にあります。Hum は揺れ、Spread、ベロシティ、ノート長、レガート、Feel は Swing、Beat Weight、Chord Balance、Drift Return、Chord Window、Swing Grid、ペダル、Str はストロークの速さと揺れ、Taper、Up Skip、Overlap、向き、Motion、Anchor、Con は Chromatic Run、経過音、前打音です。Live 標準の MIDI Tools と同じように、値は文字で並び、その下に例のフレーズを humino に通した絵が出ます。値は上下にドラッグして変えます。Connect の 3 種類はそれぞれスイッチ（名前をクリック）とベロシティを持ち、オンにするまで何もしません。今のモードで使わない値は暗くなります。Groove の 16 ステップの表と手での修正は Extension 版だけで使えます。
 
 処理ごとに分けたデバイスもあります。`humino Humanize`、`humino Swing`、`humino Strum`、`humino Pedal`、`humino Connect` の 5 つで、それぞれ自分の処理だけをかけるので、続けてかけられます。Connect は Strum より先にかけてください。ストロークをかけた和音は音の頭がそろわないので、和音として読めません。
 

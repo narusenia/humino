@@ -63,15 +63,8 @@ const scale = (input: ToolInput): Scale | undefined => {
   }
 };
 
-const NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
-const hasConnect = CONTROLS.some((c) => c.key === "runon");
-/** Shows the scale in the header's 42 px, so long names shrink ("Harmonic Minor" → "HarM"). */
-function showScale(s: Scale | undefined) {
-  if (!hasConnect) return;
-  let text = s ? `${NAMES[s.root % 12]} ${s.name ?? ""}`.trim() : "No scl";
-  if (text.length > 7 && s?.name) text = `${NAMES[s.root % 12]} ${s.name.split(" ").map((w, i) => (i ? w[0] : w.slice(0, 3))).join("")}`;
-  outlet(3, "script", "send", "scale", "set", text);
-}
+/** The picture draws passing tones with Live's scale and names it. */
+const showScale = (s: Scale | undefined) => outlet(4, "scale", JSON.stringify(s ?? null));
 
 const toCore = (n: ToolNote): Note => ({
   pitch: n.pitch,
@@ -106,9 +99,10 @@ g.msg_dictionary = (input: ToolInput) => {
   outlet_dictionary(0, { notes: [...out, ...added] });
 };
 
-/** Greys out the controls the current mode does not use. */
+/** Greys out the controls the current mode does not use (tabs here, values in the picture). */
 function syncActive() {
   for (const c of CONTROLS) if (c.mode) outlet(3, "script", "send", c.key, "active", c.mode === params.mode ? 1 : 0);
+  outlet(4, "mode", params.mode);
 }
 
 /** Re-run the transform with the current settings (Auto-like). */
@@ -151,15 +145,11 @@ g.param = (key: string, v: number) => {
   outlet(4, "value", key, c.get(params));
   changed();
 };
-/** Page tab: hide the other pages' controls through [thispatcher]. */
+/** Page tab: hide the other pages' tabs through [thispatcher] and turn the picture's page. */
 g.page = (i: number) => {
   for (const c of CONTROLS) outlet(3, "script", c.page === i ? "show" : "hide", c.key);
-  if (full) {
-    outlet(3, "script", i === 0 ? "show" : "hide", "preset");
-    // Connect does not depend on the mode, so its pages show the scale in the mode's place.
-    outlet(3, "script", i >= 3 ? "hide" : "show", "mode");
-    outlet(3, "script", i >= 3 ? "show" : "hide", "scale");
-  }
-  if (i >= 3 || !full) showScale(scale({}));
+  if (full) outlet(3, "script", i === 0 ? "show" : "hide", "preset");
+  outlet(4, "page", i);
+  showScale(scale({}));
   syncActive();
 };

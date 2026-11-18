@@ -10,7 +10,7 @@
 | 04 | MIDI Tools：統合版に加えて、処理ごとのデバイス（Humanize、Swing、Strum、Pedal、Connect）も生成する | 完了 |
 | 04b | MIDI Tools：つまみとタブに説明（Live の Info View に出る annotation）を付ける | 完了 |
 | 05 | Live で Connect を確かめる（両方の版） | 未着手 |
-| 05b | UI の見直し：ダイアログと MIDI Tools のパネルで、パラメータの並びとまとまりを整理する（Connect タブは 3 段に分け済み） | 未着手 |
+| 05b | UI の見直し：MIDI Tools は全デバイスを v8ui の絵と文字の値に作り直した。ダイアログ全体の並びの整理は残り | 作業中 |
 | 05c | 和音の判定幅（chordWindow）：グリッドから少しずれた和音も 1 つの和音として扱う | 完了 |
 | 05d | プレビューにコード名とディグリー（Scale Mode のキーに対するローマ数字）を出す | 未着手 |
 | 06 | core にギターボイシング（チューニング、カポ、弦の番号）と、Strum を弦の順にする | 未着手 |

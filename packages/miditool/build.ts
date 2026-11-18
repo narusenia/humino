@@ -6,7 +6,7 @@
 import * as esbuild from "esbuild";
 import * as fs from "node:fs";
 import { BUILTIN_PRESETS } from "@humino/core";
-import { DEVICES, layout, TAB_Y, type Device } from "./src/controls.js";
+import { DEVICES, inPicture, layout, TAB_Y, type Device } from "./src/controls.js";
 
 const bundle = async (entry: string) =>
   (await esbuild.build({ entryPoints: [entry], bundle: true, write: false, format: "iife", platform: "neutral", target: "es2020", logLevel: "info" })).outputFiles[0]!.text;
@@ -24,7 +24,8 @@ type Box = Record<string, unknown> & { id: string };
 function build(dev: Device) {
   const CONTROLS = layout(dev);
   const full = dev.id === "all";
-  const hasConnect = CONTROLS.some((c) => c.key === "runon");
+  // Dials and switches the picture shows stay parameters (automation, saving) but off the panel.
+  const pictured = inPicture(dev);
   const boxes: Box[] = [];
   const lines: [string, number, string, number][] = [];
   let y = 10;
@@ -98,28 +99,20 @@ function build(dev: Device) {
   }
 
   if (dev.pages.length > 1) {
-    const tip = full ? "Hum: humanize. Feel: swing and pedal. Str: strum. Run: chromatic runs and passing tones. Grc: grace notes." : `Pages: ${dev.pageNames.join(", ")}.`;
-    tabBox("page", [4, 2, full || hasConnect ? 100 : 144, 15], 920, 10, false, { ...enumParam("Page", "Page", dev.pageNames, 0), ...info({ label: "Page", tip }) });
+    const tip = full ? "Hum: humanize. Feel: swing and pedal. Str: strum. Con: chromatic runs, passing tones and grace notes." : `Pages: ${dev.pageNames.join(", ")}.`;
+    tabBox("page", [4, 2, full ? 100 : 144, 15], 920, 10, false, { ...enumParam("Page", "Page", dev.pageNames, 0), ...info({ label: "Page", tip }) });
     obj("p-page", "prepend page", 1, 1, { patching_rect: [920, 34, 90, 22] });
     wire("page", 0, "p-page", 0);
     wire("p-page", 0, "code", 0);
   }
 
-  // Live's scale, filled in by humino.ts (Run / Grc pages of the full device, always on Connect)
-  if (hasConnect)
-    boxes.push({
-      id: "scale", maxclass: "live.comment", varname: "scale", text: "Scale", numinlets: 1, numoutlets: 0, textjustification: 2,
-      patching_rect: [1000, 10, 100, 18], presentation: 1, presentation_rect: [106, 2, 42, 15], ...(full && { hidden: 1 }),
-      ...info({ label: "Scale", tip: "Live's current scale (Scale Mode). Passing tones and In grace notes use it." }),
-    });
-
   // The picture: a v8ui with src/view.ts embedded. humino.ts sends it values; its drags go to the dials.
-  if (dev.view) {
+  {
     const text = `globalThis.HUMINO_DEVICE = ${JSON.stringify(dev.id)};\n${viewJs}`;
     boxes.push({
       // embed is a box attribute too; without it Max looks for humino-view.js on disk
       id: "view", maxclass: "v8ui", embed: 1, numinlets: 1, numoutlets: 1, outlettype: [""], parameter_enable: 0,
-      patching_rect: [1000, 200, 144, 120], presentation: 1, presentation_rect: dev.view,
+      patching_rect: [1000, 200, 144, 120], presentation: 1, presentation_rect: dev.view.rect,
       textfile: { filename: "humino-view.js", flags: 0, embed: 1, autowatch: 0, text },
     });
     wire("code", 4, "view", 0);
@@ -132,18 +125,18 @@ function build(dev: Device) {
     const px = 640 + (k % 8) * 70;
     const py = 80 + Math.floor(k / 8) * 120;
     const hidden = c.page !== 0;
-    const shown = !dev.hide?.includes(c.key);
+    const shown = !pictured.has(c.key);
     if (c.kind === "tab") tabBox(c.key, [c.x, c.y, c.w, 15], px, py, hidden, { ...enumParam(c.label, c.label, c.options, c.get(d)), ...info(c) }, c.menu);
     else if (c.kind === "toggle")
       boxes.push({
         id: c.key, maxclass: "live.text", varname: c.key, text: c.label, texton: c.label, mode: 1, numinlets: 1, numoutlets: 2, outlettype: ["", ""], parameter_enable: 1,
-        patching_rect: [px, py, c.w, 15], presentation: 1, presentation_rect: [c.x, c.y, c.w, 15], ...(hidden && { hidden: 1 }), ...info(c),
+        patching_rect: [px, py, c.w, 15], presentation: shown ? 1 : 0, presentation_rect: [c.x, c.y, c.w, 15], ...(hidden && { hidden: 1 }), ...info(c),
         ...enumParam(c.label, c.label, ["off", "on"], c.get(d)),
       });
     else
       boxes.push({
         id: c.key, maxclass: "live.dial", varname: c.key, numinlets: 1, numoutlets: 2, outlettype: ["", "float"], parameter_enable: 1,
-        patching_rect: [px, py, 44, 48], presentation: shown ? 1 : 0, presentation_rect: [c.x, c.y, 44, 48], ...(hidden && { hidden: 1 }), ...info(c),
+        patching_rect: [px, py, 44, 48], presentation: shown ? 1 : 0, presentation_rect: [4, 21, 44, 48], ...(hidden && { hidden: 1 }), ...info(c),
         ...valueof({ parameter_longname: c.label, parameter_shortname: c.label, parameter_type: 0, parameter_mmin: 0, parameter_mmax: c.max, parameter_unitstyle: c.unit, parameter_initial: [c.get(d)], parameter_initial_enable: 1 }),
       });
     obj(`p-${c.key}`, `prepend param ${c.key}`, 1, 1, { patching_rect: [px, py + 56, 66, 22] });

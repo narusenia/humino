@@ -6,7 +6,7 @@
 
 import { DEFAULT_CONNECT, DEFAULT_GROOVE, DEFAULT_HUMANIZE, DEFAULT_PARAMS, DEFAULT_STRUM, type Mode, type Params } from "@humino/core";
 
-export const PAGES = ["Hum", "Feel", "Str", "Run", "Grc"];
+export const PAGES = ["Hum", "Feel", "Str", "Con"];
 
 /** `tip` is shown in Live's Info View when the pointer is over the control; `mode` greys it out in the other mode. */
 type Base = { key: string; label: string; tip: string; mode?: Mode; page: number; x: number; y: number; get: (p: Params) => number; set: (p: Params, v: number) => void };
@@ -63,22 +63,21 @@ export const CONTROLS: Control[] = [
   tab("direction", "Direction", "Follow the strumming hand (Auto) or downstrokes only.", 2, [4, 44], ["auto", "down"] as const, ["Auto", "Dn"], (p) => p.strum.direction, (p, v) => (p.strum.direction = v)),
   tab("motion", "Motion", "How fast the hand moves: Auto, 8th or 16th notes.", 2, [52, 50], ["auto", 8, 16] as const, ["A", "8", "16"], (p) => p.strum.motion, (p, v) => (p.strum.motion = v)),
   tab("anchor", "Anchor", "Which string lands on the grid: the first or the middle one.", 2, [106, 42], ["first", "center"] as const, ["1st", "Ctr"], (p) => p.strum.anchor, (p, v) => (p.strum.anchor = v)),
-  // Run: chromatic run and passing tone, both leading from one bass note to the next
+  // Con: chromatic run and passing tone (bass), grace notes (top). The switches and amounts live in the picture.
   dial("chromatic", "Run %", "Chance of a semitone run into the next bass note.", 3, 0, 100, UNIT.pct, (p) => p.connect.chromatic, (p, v) => (p.connect.chromatic = v)),
   dial("steps", "Run Steps", "Run notes, 16ths each. Fewer when there is no room.", 3, 1, 6, UNIT.int, (p) => p.connect.steps, (p, v) => (p.connect.steps = Math.max(1, Math.round(v)))),
   dial("runvel", "Run Vel", "Velocity of run notes, as a % of the bass note they leave.", 3, 2, 100, UNIT.pct, (p) => p.connect.chromaticVelocity, (p, v) => (p.connect.chromaticVelocity = v)),
   dial("passing", "Pass %", "Chance of a scale tone between two bass notes, when no run was added. Needs Scale Mode.", 3, 3, 100, UNIT.pct, (p) => p.connect.passing, (p, v) => (p.connect.passing = v)),
   dial("passvel", "Pass Vel", "Velocity of passing tones, as a % of the bass note they leave.", 3, 4, 100, UNIT.pct, (p) => p.connect.passingVelocity, (p, v) => (p.connect.passingVelocity = v)),
   toggle("runon", "Run", "Turns chromatic runs on.", 3, [4, 44], (p) => p.connect.chromaticOn, (p, v) => (p.connect.chromaticOn = v)),
-  tab("rundir", "Run From", "Side the run comes from: Auto follows the previous bass note, Up climbs from below, Down comes from above.", 3, [52, 44, TAB_Y, true], ["auto", "up", "down"] as const, ["Auto", "Up", "Down"], (p) => p.connect.runDirection, (p, v) => (p.connect.runDirection = v)),
+  tab("rundir", "Run From", "Side the run comes from: Auto follows the previous bass note, Up climbs from below, Down comes from above.", 3, [4, 46, TAB_Y, true], ["auto", "up", "down"] as const, ["Auto", "Up", "Down"], (p) => p.connect.runDirection, (p, v) => (p.connect.runDirection = v)),
   toggle("passon", "Passing", "Turns passing tones on.", 3, [100, 48], (p) => p.connect.passingOn, (p, v) => (p.connect.passingOn = v)),
-  // Grc: grace notes climbing into the top note
-  dial("grace", "Grace %", "Chance of grace notes before the top note.", 4, 0, 100, UNIT.pct, (p) => p.connect.grace, (p, v) => (p.connect.grace = v)),
-  dial("gracesteps", "Steps", "Grace notes climbing into the top note. Fewer when there is no room.", 4, 1, 6, UNIT.int, (p) => p.connect.graceSteps, (p, v) => (p.connect.graceSteps = Math.max(1, Math.round(v)))),
-  dial("gracevel", "Velocity", "Velocity of grace notes, as a % of the top note they lead into.", 4, 2, 100, UNIT.pct, (p) => p.connect.graceVelocity, (p, v) => (p.connect.graceVelocity = v)),
-  toggle("graceon", "Grace", "Turns grace notes on.", 4, [4, 44], (p) => p.connect.graceOn, (p, v) => (p.connect.graceOn = v)),
-  tab("gracelen", "Grace Len", "Length of each grace note: 1/64, 1/32 or 1/16 of a beat.", 4, [52, 44, TAB_Y, true], [1 / 64, 1 / 32, 1 / 16] as const, ["1/64", "1/32", "1/16"], (p) => p.connect.graceLength, (p, v) => (p.connect.graceLength = v)),
-  tab("gracescale", "Grace Scale", "In: grace notes step through Live's scale. Out: by semitones, leaving the scale.", 4, [100, 48, TAB_Y, true], ["in", "out"] as const, ["In", "Out"], (p) => p.connect.graceScale, (p, v) => (p.connect.graceScale = v)),
+  dial("grace", "Grace %", "Chance of grace notes before the top note.", 3, 0, 100, UNIT.pct, (p) => p.connect.grace, (p, v) => (p.connect.grace = v)),
+  dial("gracesteps", "Steps", "Grace notes climbing into the top note. Fewer when there is no room.", 3, 1, 6, UNIT.int, (p) => p.connect.graceSteps, (p, v) => (p.connect.graceSteps = Math.max(1, Math.round(v)))),
+  dial("gracevel", "Velocity", "Velocity of grace notes, as a % of the top note they lead into.", 3, 2, 100, UNIT.pct, (p) => p.connect.graceVelocity, (p, v) => (p.connect.graceVelocity = v)),
+  toggle("graceon", "Grace", "Turns grace notes on.", 3, [4, 44], (p) => p.connect.graceOn, (p, v) => (p.connect.graceOn = v)),
+  tab("gracelen", "Grace Len", "Length of each grace note: 1/64, 1/32 or 1/16 of a beat.", 3, [52, 46, TAB_Y, true], [1 / 64, 1 / 32, 1 / 16] as const, ["1/64", "1/32", "1/16"], (p) => p.connect.graceLength, (p, v) => (p.connect.graceLength = v)),
+  tab("gracescale", "Grace Scale", "In: grace notes step through Live's scale. Out: by semitones, leaving the scale.", 3, [100, 48, TAB_Y, true], ["in", "out"] as const, ["In", "Out"], (p) => p.connect.graceScale, (p, v) => (p.connect.graceScale = v)),
 ];
 
 // Strum works in guitar mode only; spread and pedal in piano mode only.
@@ -89,6 +88,12 @@ for (const c of CONTROLS) {
 
 // ---------------------------------------------------------------- devices
 
+/** A value shown in the picture: `label` overrides the control's; clicking the label flips `toggle`. */
+export type Field = { key: string; label?: string; toggle?: string };
+export type Picture = "humanize" | "swing" | "pedal" | "strum" | "connect";
+/** One page of the picture: what it draws and the values above it, row by row (null leaves a cell empty). */
+export type ViewPage = { picture: Picture; rows: (Field | null)[][] };
+
 /**
  * humino.amxd holds every control; the others do one stage each and switch the rest off,
  * so they can be run one after another from the Transform tab.
@@ -98,20 +103,18 @@ export type Device = {
   /** File name without .amxd; Live lists the tool under this name. */
   file: string;
   pageNames: string[];
-  /** Control keys per page; dials fill the 3 × 2 grid in this order, tabs keep their place. */
+  /** Control keys per page. */
   pages: string[][];
   /** Tab positions that differ from the full device: [x, w, y]. */
   place?: Record<string, [number, number, number]>;
-  /** Where the picture (src/view.ts) sits: [x, y, w, h]. */
-  view?: [number, number, number, number];
-  /** Controls the picture replaces: kept as parameters, left off the panel. */
-  hide?: string[];
+  /** The picture (src/view.ts): where it sits ([x, y, w, h]) and what it shows on each page. */
+  view: { rect: [number, number, number, number]; pages: ViewPage[] };
   params: () => Params;
 };
 
 const zeros = () => new Array<number>(16).fill(0);
 /** Every stage off: humanize at 0, no groove, piano without pedal, Connect off. */
-const neutral = (): Params => ({
+export const neutral = (): Params => ({
   mode: "piano",
   groove: { ...DEFAULT_GROOVE, timing: zeros(), velocity: zeros(), swing: 0 },
   humanize: { ...DEFAULT_HUMANIZE, drift: 0, jitter: 0, spread: 0, velJitter: 0, chordBalance: 0, legato: 0, lengthJitter: 0 },
@@ -126,14 +129,47 @@ const only = (f: (p: Params) => void) => () => {
   return p;
 };
 const keysOn = (page: number) => CONTROLS.filter((c) => c.page === page).map((c) => c.key);
+const f = (key: string, label?: string, toggle?: string): Field => ({ key, ...(label && { label }), ...(toggle && { toggle }) });
+
+const HUM: Field[][] = [
+  [f("drift"), f("jitter")],
+  [f("spread"), f("vel")],
+  [f("length"), f("legato")],
+];
+const STRUM: (Field | null)[][] = [
+  [f("down"), f("up")],
+  [f("speedjitter"), f("taper")],
+  [f("upskip"), f("overlap")],
+];
+const CON: (Field | null)[][] = [
+  [f("chromatic", "Run", "runon"), f("steps", "Steps"), f("runvel", "Vel")],
+  [f("passing", "Pass", "passon"), null, f("passvel", "Vel")],
+  [f("grace", "Grace", "graceon"), f("gracesteps", "Steps"), f("gracevel", "Vel")],
+];
 
 export const DEVICES: Device[] = [
-  { id: "all", file: "humino", pageNames: PAGES, pages: PAGES.map((_, i) => keysOn(i)), params: () => JSON.parse(JSON.stringify(DEFAULT_PARAMS)) as Params },
+  {
+    id: "all",
+    file: "humino",
+    pageNames: PAGES,
+    pages: PAGES.map((_, i) => keysOn(i)),
+    view: {
+      rect: [4, 21, 144, 104],
+      pages: [
+        { picture: "humanize", rows: HUM },
+        { picture: "swing", rows: [[f("swing"), f("beatweight")], [f("chordbal"), f("driftreturn")], [f("chordwin"), null]] },
+        { picture: "strum", rows: STRUM },
+        { picture: "connect", rows: CON },
+      ],
+    },
+    params: () => JSON.parse(JSON.stringify(DEFAULT_PARAMS)) as Params,
+  },
   {
     id: "humanize",
     file: "humino Humanize",
-    pageNames: ["Main", "Feel"],
-    pages: [keysOn(0), ["beatweight", "chordbal", "driftreturn", "chordwin"]],
+    pageNames: ["Humanize"],
+    pages: [[...keysOn(0), "beatweight", "chordbal", "driftreturn", "chordwin"]],
+    view: { rect: [4, 4, 144, 139], pages: [{ picture: "humanize", rows: [...HUM, [f("beatweight"), f("chordbal")], [f("driftreturn"), f("chordwin")]] }] },
     params: only((p) => (p.humanize = { ...DEFAULT_HUMANIZE })),
   },
   {
@@ -142,33 +178,47 @@ export const DEVICES: Device[] = [
     pageNames: ["Swing"],
     pages: [["swing", "grid"]],
     place: { grid: [4, 144, 4] },
-    view: [4, 23, 144, 120],
-    hide: ["swing"],
+    view: { rect: [4, 23, 144, 120], pages: [{ picture: "swing", rows: [[f("swing")]] }] },
     params: only((p) => (p.groove.swing = 33)),
   },
-  { id: "strum", file: "humino Strum", pageNames: ["Strum", "Chords"], pages: [keysOn(2), ["chordwin"]], params: only((p) => (p.mode = "guitar")) },
-  { id: "pedal", file: "humino Pedal", pageNames: ["Pedal"], pages: [["pedal"]], place: { pedal: [4, 144, 4] }, view: [4, 23, 144, 120], params: only((p) => (p.pedal = "chord")) },
+  {
+    id: "strum",
+    file: "humino Strum",
+    pageNames: ["Strum"],
+    pages: [[...keysOn(2), "chordwin"]],
+    view: { rect: [4, 4, 144, 121], pages: [{ picture: "strum", rows: [...STRUM, [f("chordwin"), null]] }] },
+    params: only((p) => (p.mode = "guitar")),
+  },
+  {
+    id: "pedal",
+    file: "humino Pedal",
+    pageNames: ["Pedal"],
+    pages: [["pedal"]],
+    place: { pedal: [4, 144, 4] },
+    view: { rect: [4, 23, 144, 120], pages: [{ picture: "pedal", rows: [] }] },
+    params: only((p) => (p.pedal = "chord")),
+  },
   {
     id: "connect",
     file: "humino Connect",
-    pageNames: ["Run", "Grace"],
-    pages: [keysOn(3), [...keysOn(4), "chordwin"]],
+    pageNames: ["Connect"],
+    pages: [[...keysOn(3), "chordwin"]],
+    view: { rect: [4, 4, 144, 121], pages: [{ picture: "connect", rows: [...CON, [f("chordwin", "Win"), null, null]] }] },
     params: only((p) => Object.assign(p.connect, { chromaticOn: true, passingOn: true, graceOn: true })),
   },
 ];
 
+/** Keys the picture shows (values and switches): their dials and buttons stay off the panel. */
+export const inPicture = (d: Device) => new Set(d.view.pages.flatMap((pg) => pg.rows.flat().flatMap((x) => (x ? [x.key, ...(x.toggle ? [x.toggle] : [])] : []))));
+
 /** The device's controls with their page and position on its panel. */
 export function layout(d: Device): Control[] {
-  return d.pages.flatMap((keys, page) => {
-    let slot = 0;
-    return keys.map((key) => {
+  return d.pages.flatMap((keys, page) =>
+    keys.map((key) => {
       const c = CONTROLS.find((x) => x.key === key)!;
-      if (c.kind === "dial") {
-        const k = slot++;
-        return { ...c, page, x: COL[k % 3]!, y: ROW[Math.floor(k / 3)]! };
-      }
+      if (c.kind !== "tab") return { ...c, page };
       const [x, w, y] = d.place?.[key] ?? [c.x, c.w, c.y];
-      return { ...c, page, x, w, y } as Control;
-    });
-  });
+      return { ...c, page, x, w, y };
+    }),
+  );
 }
