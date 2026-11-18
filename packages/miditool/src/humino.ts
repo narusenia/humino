@@ -29,7 +29,7 @@ type ToolInput = {
 
 const g = globalThis as Record<string, unknown>;
 g.inlets = 1;
-g.outlets = 4; // 0 notes, 1 bang to live.miditool.in, 2 values back to the controls, 3 thispatcher
+g.outlets = 5; // 0 notes, 1 bang to live.miditool.in, 2 values back to the controls, 3 thispatcher, 4 the picture (src/view.ts)
 
 // build.ts puts `globalThis.HUMINO_DEVICE = "<id>"` before this bundle.
 const device = DEVICES.find((d) => d.id === g.HUMINO_DEVICE) ?? DEVICES[0]!;
@@ -120,7 +120,10 @@ function changed() {
 /** Show the controls on the current values without re-triggering them. */
 function showAll() {
   if (full) outlet(2, "mode", params.mode === "guitar" ? 0 : 1);
-  for (const c of CONTROLS) outlet(2, c.key, c.get(params));
+  for (const c of CONTROLS) {
+    outlet(2, c.key, c.get(params));
+    outlet(4, "value", c.key, c.get(params));
+  }
 }
 
 // Messages from the device's controls ([prepend ...] → this).
@@ -145,6 +148,7 @@ g.param = (key: string, v: number) => {
   const c = CONTROLS.find((x) => x.key === key);
   if (!c) return;
   c.set(params, v);
+  outlet(4, "value", key, c.get(params));
   changed();
 };
 /** Page tab: hide the other pages' controls through [thispatcher]. */

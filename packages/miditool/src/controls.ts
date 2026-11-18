@@ -101,6 +101,10 @@ export type Device = {
   pages: string[][];
   /** Tab positions that differ from the full device: [x, w, y]. */
   place?: Record<string, [number, number, number]>;
+  /** Where the picture (src/view.ts) sits: [x, y, w, h]. */
+  view?: [number, number, number, number];
+  /** Controls the picture replaces: kept as parameters, left off the panel. */
+  hide?: string[];
   params: () => Params;
 };
 
@@ -130,9 +134,18 @@ export const DEVICES: Device[] = [
     pages: [keysOn(0), ["beatweight", "chordbal", "driftreturn"]],
     params: only((p) => (p.humanize = { ...DEFAULT_HUMANIZE })),
   },
-  { id: "swing", file: "humino Swing", pageNames: ["Swing"], pages: [["swing", "grid"]], params: only((p) => (p.groove.swing = 33)) },
+  {
+    id: "swing",
+    file: "humino Swing",
+    pageNames: ["Swing"],
+    pages: [["swing", "grid"]],
+    place: { grid: [4, 144, 4] },
+    view: [4, 23, 144, 120],
+    hide: ["swing"],
+    params: only((p) => (p.groove.swing = 33)),
+  },
   { id: "strum", file: "humino Strum", pageNames: ["Strum"], pages: [keysOn(2)], params: only((p) => (p.mode = "guitar")) },
-  { id: "pedal", file: "humino Pedal", pageNames: ["Pedal"], pages: [["pedal"]], place: { pedal: [4, 144, ROW[0]!] }, params: only((p) => (p.pedal = "chord")) },
+  { id: "pedal", file: "humino Pedal", pageNames: ["Pedal"], pages: [["pedal"]], place: { pedal: [4, 144, 4] }, view: [4, 23, 144, 120], params: only((p) => (p.pedal = "chord")) },
   {
     id: "connect",
     file: "humino Connect",

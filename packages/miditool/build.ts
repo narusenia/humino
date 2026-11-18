@@ -8,17 +8,10 @@ import * as fs from "node:fs";
 import { BUILTIN_PRESETS } from "@humino/core";
 import { DEVICES, layout, TAB_Y, type Device } from "./src/controls.js";
 
-const js = (
-  await esbuild.build({
-    entryPoints: ["src/humino.ts"],
-    bundle: true,
-    write: false,
-    format: "iife",
-    platform: "neutral",
-    target: "es2020",
-    logLevel: "info",
-  })
-).outputFiles[0]!.text;
+const bundle = async (entry: string) =>
+  (await esbuild.build({ entryPoints: [entry], bundle: true, write: false, format: "iife", platform: "neutral", target: "es2020", logLevel: "info" })).outputFiles[0]!.text;
+const js = await bundle("src/humino.ts");
+const viewJs = await bundle("src/view.ts");
 
 const u32 = (n: number) => {
   const b = Buffer.alloc(4);
@@ -52,8 +45,8 @@ function build(dev: Device) {
     fontname: "<Monospaced>",
     fontsize: 10,
     numinlets: 1,
-    numoutlets: 4,
-    outlettype: ["", "", "", ""],
+    numoutlets: 5,
+    outlettype: ["", "", "", "", ""],
     patching_rect: [200, 40, 400, 300],
   });
   obj("out", "live.miditool.out", 1, 0);
@@ -120,10 +113,25 @@ function build(dev: Device) {
       ...info({ label: "Scale", tip: "Live's current scale (Scale Mode). Passing tones and In grace notes use it." }),
     });
 
+  // The picture: a v8ui with src/view.ts embedded. humino.ts sends it values; its drags go to the dials.
+  if (dev.view) {
+    const text = `globalThis.HUMINO_DEVICE = ${JSON.stringify(dev.id)};\n${viewJs}`;
+    boxes.push({
+      id: "view", maxclass: "v8ui", filename: "humino-view.js", numinlets: 1, numoutlets: 1, outlettype: [""], parameter_enable: 0,
+      patching_rect: [1000, 200, 144, 120], presentation: 1, presentation_rect: dev.view,
+      textfile: { filename: "humino-view.js", flags: 0, embed: 1, autowatch: 0, text },
+    });
+    wire("code", 4, "view", 0);
+    obj("view-route", `route ${CONTROLS.map((c) => c.key).join(" ")}`, 1, CONTROLS.length + 1, { patching_rect: [1000, 330, 200, 22] });
+    wire("view", 0, "view-route", 0);
+    CONTROLS.forEach((c, k) => wire("view-route", k, c.key, 0));
+  }
+
   CONTROLS.forEach((c, k) => {
     const px = 640 + (k % 8) * 70;
     const py = 80 + Math.floor(k / 8) * 120;
     const hidden = c.page !== 0;
+    const shown = !dev.hide?.includes(c.key);
     if (c.kind === "tab") tabBox(c.key, [c.x, c.y, c.w, 15], px, py, hidden, { ...enumParam(c.label, c.label, c.options, c.get(d)), ...info(c) }, c.menu);
     else if (c.kind === "toggle")
       boxes.push({
@@ -134,7 +142,7 @@ function build(dev: Device) {
     else
       boxes.push({
         id: c.key, maxclass: "live.dial", varname: c.key, numinlets: 1, numoutlets: 2, outlettype: ["", "float"], parameter_enable: 1,
-        patching_rect: [px, py, 44, 48], presentation: 1, presentation_rect: [c.x, c.y, 44, 48], ...(hidden && { hidden: 1 }), ...info(c),
+        patching_rect: [px, py, 44, 48], presentation: shown ? 1 : 0, presentation_rect: [c.x, c.y, 44, 48], ...(hidden && { hidden: 1 }), ...info(c),
         ...valueof({ parameter_longname: c.label, parameter_shortname: c.label, parameter_type: 0, parameter_mmin: 0, parameter_mmax: c.max, parameter_unitstyle: c.unit, parameter_initial: [c.get(d)], parameter_initial_enable: 1 }),
       });
     obj(`p-${c.key}`, `prepend param ${c.key}`, 1, 1, { patching_rect: [px, py + 56, 66, 22] });
