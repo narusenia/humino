@@ -95,6 +95,7 @@ type Def = NumDef | ChoiceDef;
 const HUMANIZE: Def[] = [
   { kind: "num", section: "humanize", key: "drift", label: "drift", min: 0, max: 40, step: 0.5, unit: "ms", tip: ["Slow timing wander that comes and goes", "ゆっくり走って戻るタイミングの揺れ"] },
   { kind: "num", section: "humanize", key: "jitter", label: "jitter", min: 0, max: 20, step: 0.5, unit: "ms", tip: ["Small per-note timing error", "ノートごとの細かいずれ"] },
+  { kind: "num", section: "humanize", key: "spread", label: "spread", min: 0, max: 20, step: 0.5, unit: "ms", tip: ["Offsets each note of a chord on its own; 0 moves the chord as one (piano)", "和音の音を1つずつずらす。0 で和音ごとそろって動く（ピアノ）"] },
   { kind: "num", section: "humanize", key: "beatWeight", label: "beat weight", min: 0, max: 100, step: 1, unit: "%", tip: ["Keeps strong beats tighter than off-beats", "表拍を裏拍よりきっちり保つ"] },
   { kind: "num", section: "humanize", key: "velJitter", label: "vel ±", min: 0, max: 30, step: 1, tip: ["Random velocity change", "ベロシティのランダムな増減"] },
   { kind: "num", section: "humanize", key: "chordBalance", label: "chord bal", min: 0, max: 100, step: 1, unit: "%", tip: ["Louder top and bass, softer inner notes", "和音の最高音と最低音を強く、中の音を弱く"] },

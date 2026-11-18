@@ -28,6 +28,17 @@ export const DEFAULT_PARAMS: Params = {
   pedal: "off",
 };
 
+/** Fills fields missing from settings saved by an older version with the defaults. */
+export function completeParams(p: Params): Params {
+  return {
+    ...DEFAULT_PARAMS,
+    ...p,
+    groove: { ...DEFAULT_PARAMS.groove, ...p.groove },
+    humanize: { ...DEFAULT_PARAMS.humanize, ...p.humanize },
+    strum: { ...DEFAULT_PARAMS.strum, ...p.strum },
+  };
+}
+
 export const STAGES = ["groove", "humanize", "strum", "pedal"] as const;
 export type Stage = (typeof STAGES)[number];
 

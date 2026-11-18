@@ -56,12 +56,13 @@ type Dial = { name: string; label: string; max: number; unit: number; init: numb
 const UNIT = { int: 0, ms: 2, pct: 5 };
 const d = DEFAULT_PARAMS;
 const dials: Dial[] = [
-  { name: "drift", label: "Drift", max: 40, unit: UNIT.ms, init: d.humanize.drift, x: 4, y: 24 },
-  { name: "jitter", label: "Jitter", max: 20, unit: UNIT.ms, init: d.humanize.jitter, x: 54, y: 24 },
-  { name: "vel", label: "Vel ±", max: 30, unit: UNIT.int, init: d.humanize.velJitter, x: 104, y: 24 },
-  { name: "swing", label: "Swing", max: 75, unit: UNIT.pct, init: d.groove.swing, x: 4, y: 86 },
-  { name: "strum", label: "Strum", max: 120, unit: UNIT.ms, init: d.strum.downSpeed, x: 54, y: 86 },
-  { name: "legato", label: "Legato", max: 100, unit: UNIT.pct, init: d.humanize.legato, x: 104, y: 86 },
+  { name: "drift", label: "Drift", max: 40, unit: UNIT.ms, init: d.humanize.drift, x: 0, y: 24 },
+  { name: "jitter", label: "Jitter", max: 20, unit: UNIT.ms, init: d.humanize.jitter, x: 38, y: 24 },
+  { name: "spread", label: "Spread", max: 20, unit: UNIT.ms, init: d.humanize.spread, x: 76, y: 24 },
+  { name: "vel", label: "Vel ±", max: 30, unit: UNIT.int, init: d.humanize.velJitter, x: 114, y: 24 },
+  { name: "swing", label: "Swing", max: 75, unit: UNIT.pct, init: d.groove.swing, x: 0, y: 86 },
+  { name: "strum", label: "Strum", max: 120, unit: UNIT.ms, init: d.strum.downSpeed, x: 38, y: 86 },
+  { name: "legato", label: "Legato", max: 100, unit: UNIT.pct, init: d.humanize.legato, x: 76, y: 86 },
 ];
 const valueof = (v: Record<string, unknown>) => ({ saved_attribute_attributes: { valueof: v } });
 
@@ -120,7 +121,7 @@ dials.forEach((dial, k) => {
     parameter_enable: 1,
     patching_rect: [px, 140, 44, 48],
     presentation: 1,
-    presentation_rect: [dial.x, dial.y, 44, 48],
+    presentation_rect: [dial.x, dial.y, 38, 48],
     ...valueof({ parameter_longname: dial.label, parameter_shortname: dial.label, parameter_type: 0, parameter_mmin: 0, parameter_mmax: dial.max, parameter_unitstyle: dial.unit, parameter_initial: [dial.init], parameter_initial_enable: 1 }),
   });
   obj(`p-${dial.name}`, `prepend ${dial.name}`, 1, 1, { patching_rect: [px, 200, 66, 22] });

@@ -13,6 +13,8 @@ export type HumanizeParams = {
   driftReturn: number;
   /** ms, per-chord jitter standard deviation. */
   jitter: number;
+  /** ms, per-note offset within a chord (standard deviation). 0 moves the chord as one. */
+  spread: number;
   /** 0..100 %, how much jitter is reduced on strong beats. */
   beatWeight: number;
   /** ± velocity, uniform. */
@@ -29,6 +31,7 @@ export const DEFAULT_HUMANIZE: HumanizeParams = {
   drift: 8,
   driftReturn: 0.3,
   jitter: 4,
+  spread: 3,
   beatWeight: 50,
   velJitter: 6,
   chordBalance: 40,
@@ -69,14 +72,16 @@ export function applyHumanize(work: Note[], a: Analysis, target: boolean[], p: H
   const jitter = a.groups.map((g) => rng.gaussian() * p.jitter * (1 - (p.beatWeight / 100) * (1 - g.level / 4)));
   const velNoise = work.map(() => (rng.next() * 2 - 1) * p.velJitter);
   const lenNoise = work.map(() => ((rng.next() * 2 - 1) * p.lengthJitter) / 100);
+  // drawn last so seeds keep the drift, jitter and length they had before spread existed
+  const spreadNoise = work.map(() => rng.gaussian() * p.spread);
   const cb = p.chordBalance / 100;
 
   a.groups.forEach((g, gi) => {
     if (!target[gi]) return;
-    const shift = msToBeats(drift[gi]! + jitter[gi]!, ctx.tempo);
+    const shift = drift[gi]! + jitter[gi]!;
     g.idx.forEach((i, k) => {
       const n = work[i]!;
-      n.startTime = Math.max(0, n.startTime + shift);
+      n.startTime = Math.max(0, n.startTime + msToBeats(shift + spreadNoise[i]!, ctx.tempo));
       const balance = g.idx.length < 2 ? 0 : k === g.idx.length - 1 ? 12 : k === 0 ? 6 : -6;
       n.velocity = clampVelocity((n.velocity ?? DEFAULT_VELOCITY) + balance * cb + velNoise[i]!);
     });

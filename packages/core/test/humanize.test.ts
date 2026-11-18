@@ -16,7 +16,7 @@ const run = (notes: Note[], p: HumanizeParams = DEFAULT_HUMANIZE, seed = 7) => {
   return work;
 };
 
-const zero: HumanizeParams = { drift: 0, driftReturn: 0.3, jitter: 0, beatWeight: 0, velJitter: 0, chordBalance: 0, legato: 0, lengthJitter: 0 };
+const zero: HumanizeParams = { drift: 0, driftReturn: 0.3, jitter: 0, spread: 0, beatWeight: 0, velJitter: 0, chordBalance: 0, legato: 0, lengthJitter: 0 };
 
 describe("humanize", () => {
   it("is deterministic per seed", () => {
@@ -24,13 +24,24 @@ describe("humanize", () => {
     expect(run(chords(), DEFAULT_HUMANIZE, 8)).not.toEqual(run(chords()));
   });
 
-  it("moves chord notes together", () => {
-    const out = run(chords());
+  it("moves chord notes together without spread", () => {
+    const out = run(chords(), { ...DEFAULT_HUMANIZE, spread: 0 });
     for (let c = 0; c < 4; c++) {
       const starts = out.slice(c * 3, c * 3 + 3).map((n) => n.startTime);
       expect(new Set(starts).size).toBe(1);
     }
     expect(out.some((n, i) => n.startTime !== chords()[i]!.startTime)).toBe(true);
+  });
+
+  it("spread moves chord notes apart, around the chord's shift", () => {
+    const together = run(chords(), { ...DEFAULT_HUMANIZE, spread: 0 });
+    const apart = run(chords(), { ...DEFAULT_HUMANIZE, spread: 10 });
+    for (let c = 0; c < 4; c++) {
+      const starts = apart.slice(c * 3, c * 3 + 3).map((n) => n.startTime);
+      expect(new Set(starts).size).toBe(3);
+      // 10 ms at 120 bpm is 0.02 beats; stay within 5 sigma of the chord's own shift
+      for (const s of starts) expect(Math.abs(s - together[c * 3]!.startTime)).toBeLessThan(0.1);
+    }
   });
 
   it("does nothing with all amounts at zero", () => {

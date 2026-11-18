@@ -2,7 +2,7 @@
 
 import * as fs from "node:fs";
 import * as path from "node:path";
-import type { Direction, Note, Overrides, Params, Preset } from "@humino/core";
+import { completeParams, type Direction, type Note, type Overrides, type Params, type Preset } from "@humino/core";
 
 /** Original notes keyed by the hash of the notes humino wrote (ADR-0002). */
 export type OriginalEntry = {
@@ -51,7 +51,8 @@ export class Store {
   }
 
   last(): Last | undefined {
-    return this.read<Last | undefined>("last.json", undefined);
+    const last = this.read<Last | undefined>("last.json", undefined);
+    return last && { ...last, params: completeParams(last.params) };
   }
 
   saveLast(last: Last) {
@@ -59,7 +60,7 @@ export class Store {
   }
 
   presets(): Preset[] {
-    return this.read<Preset[]>("presets.json", []);
+    return this.read<Preset[]>("presets.json", []).map((p) => ({ ...p, params: completeParams(p.params) }));
   }
 
   savePresets(presets: Preset[]) {

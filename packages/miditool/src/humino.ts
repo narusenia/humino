@@ -99,6 +99,7 @@ g.preset = (i: number) => {
   outlet(2, "mode", params.mode === "guitar" ? 0 : 1);
   outlet(2, "drift", params.humanize.drift);
   outlet(2, "jitter", params.humanize.jitter);
+  outlet(2, "spread", params.humanize.spread);
   outlet(2, "vel", params.humanize.velJitter);
   outlet(2, "legato", params.humanize.legato);
   outlet(2, "swing", params.groove.swing);
@@ -107,6 +108,7 @@ g.preset = (i: number) => {
 };
 g.drift = setter("humanize", "drift");
 g.jitter = setter("humanize", "jitter");
+g.spread = setter("humanize", "spread");
 g.vel = setter("humanize", "velJitter");
 g.legato = setter("humanize", "legato");
 g.swing = setter("groove", "swing");
