@@ -67,20 +67,21 @@ export const CONTROLS: Control[] = [
   tab("tuning", "Tuning", "Tuning the voicing uses: standard or drop D.", 2, [4, 44], ["standard", "dropd"] as const, ["Std", "Drop D"], (p) => p.voicing.tuning, (p, v) => (p.voicing.tuning = v)),
   dial("capo", "Capo", "Capo fret for the voicing (0 = none).", 2, 0, 7, UNIT.int, (p) => p.voicing.capo, (p, v) => (p.voicing.capo = Math.round(v))),
   // Con: chromatic run and passing tone (bass), grace notes (top). The switches and amounts live in the picture.
-  dial("chromatic", "Run %", "Chance of a semitone run into the next bass note.", 3, 0, 100, UNIT.pct, (p) => p.connect.chromatic, (p, v) => (p.connect.chromatic = v)),
+  dial("chromatic", "Run %", "Chance of a run into the next bass note.", 3, 0, 100, UNIT.pct, (p) => p.connect.chromatic, (p, v) => (p.connect.chromatic = v)),
   dial("steps", "Run Steps", "Run notes, 16ths each. Fewer when there is no room.", 3, 1, 6, UNIT.int, (p) => p.connect.steps, (p, v) => (p.connect.steps = Math.max(1, Math.round(v)))),
   dial("runvel", "Run Vel", "Velocity of run notes, as a % of the bass note they leave.", 3, 2, 100, UNIT.pct, (p) => p.connect.chromaticVelocity, (p, v) => (p.connect.chromaticVelocity = v)),
   dial("passing", "Pass %", "Chance of a scale tone between two bass notes, when no run was added. Needs Scale Mode.", 3, 3, 100, UNIT.pct, (p) => p.connect.passing, (p, v) => (p.connect.passing = v)),
   dial("passvel", "Pass Vel", "Velocity of passing tones, as a % of the bass note they leave.", 3, 4, 100, UNIT.pct, (p) => p.connect.passingVelocity, (p, v) => (p.connect.passingVelocity = v)),
-  toggle("runon", "Run", "Turns chromatic runs on.", 3, [4, 44], (p) => p.connect.chromaticOn, (p, v) => (p.connect.chromaticOn = v)),
-  tab("rundir", "Run From", "Side the run comes from: Auto follows the previous bass note, Up climbs from below, Down comes from above.", 3, [4, 46, TAB_Y, true], ["auto", "up", "down"] as const, ["Auto", "Up", "Down"], (p) => p.connect.runDirection, (p, v) => (p.connect.runDirection = v)),
+  toggle("runon", "Run", "Turns runs on.", 3, [4, 44], (p) => p.connect.chromaticOn, (p, v) => (p.connect.chromaticOn = v)),
+  tab("runscale", "Run Scale", "Scale: the run steps through Live's scale. Chrom: by semitones, leaving the scale. Semitones when Scale Mode is off.", 3, [0, 0], ["in", "out"] as const, ["Scale", "Chrom"], (p) => p.connect.runScale, (p, v) => (p.connect.runScale = v)),
+  tab("rundir", "Run From", "Side the run comes from: Auto follows the previous bass note, Up climbs from below, Down comes from above.", 3, [4, 70, TAB_Y, true], ["auto", "up", "down"] as const, ["Auto", "Up", "Down"], (p) => p.connect.runDirection, (p, v) => (p.connect.runDirection = v)),
   toggle("passon", "Passing", "Turns passing tones on.", 3, [100, 48], (p) => p.connect.passingOn, (p, v) => (p.connect.passingOn = v)),
   dial("grace", "Grace %", "Chance of grace notes before the top note.", 3, 0, 100, UNIT.pct, (p) => p.connect.grace, (p, v) => (p.connect.grace = v)),
   dial("gracesteps", "Steps", "Grace notes climbing into the top note. Fewer when there is no room.", 3, 1, 6, UNIT.int, (p) => p.connect.graceSteps, (p, v) => (p.connect.graceSteps = Math.max(1, Math.round(v)))),
   dial("gracevel", "Velocity", "Velocity of grace notes, as a % of the top note they lead into.", 3, 2, 100, UNIT.pct, (p) => p.connect.graceVelocity, (p, v) => (p.connect.graceVelocity = v)),
   toggle("graceon", "Grace", "Turns grace notes on.", 3, [4, 44], (p) => p.connect.graceOn, (p, v) => (p.connect.graceOn = v)),
-  tab("gracelen", "Grace Len", "Length of each grace note: 1/64, 1/32 or 1/16 of a beat.", 3, [52, 46, TAB_Y, true], [1 / 64, 1 / 32, 1 / 16] as const, ["1/64", "1/32", "1/16"], (p) => p.connect.graceLength, (p, v) => (p.connect.graceLength = v)),
-  tab("gracescale", "Grace Scale", "In: grace notes step through Live's scale. Out: by semitones, leaving the scale.", 3, [100, 48, TAB_Y, true], ["in", "out"] as const, ["In", "Out"], (p) => p.connect.graceScale, (p, v) => (p.connect.graceScale = v)),
+  tab("gracelen", "Grace Len", "Length of each grace note: 1/64, 1/32 or 1/16 of a beat.", 3, [78, 70, TAB_Y, true], [1 / 64, 1 / 32, 1 / 16] as const, ["1/64", "1/32", "1/16"], (p) => p.connect.graceLength, (p, v) => (p.connect.graceLength = v)),
+  tab("gracescale", "Grace Scale", "Scale: grace notes step through Live's scale. Chrom: by semitones, leaving the scale.", 3, [0, 0], ["in", "out"] as const, ["Scale", "Chrom"], (p) => p.connect.graceScale, (p, v) => (p.connect.graceScale = v)),
 ];
 
 // Strum works in guitar mode only; spread and pedal in piano mode only.
@@ -150,6 +151,7 @@ const CON: (Field | null)[][] = [
   [f("chromatic", "Run", "runon"), f("steps", "Steps"), f("runvel", "Vel")],
   [f("passing", "Pass", "passon"), null, f("passvel", "Vel")],
   [f("grace", "Grace", "graceon"), f("gracesteps", "Steps"), f("gracevel", "Vel")],
+  [f("runscale", "Run"), null, f("gracescale", "Grace")],
 ];
 
 export const DEVICES: Device[] = [

@@ -9,7 +9,7 @@ const params = (c: Partial<ConnectParams>): Params => ({
   ...DEFAULT_PARAMS,
   humanize: still,
   groove: { ...DEFAULT_PARAMS.groove, swing: 0, velocity: DEFAULT_PARAMS.groove.velocity.map(() => 0) },
-  connect: { ...DEFAULT_CONNECT, chromaticOn: true, passingOn: true, graceOn: true, passing: 0, chromatic: 0, grace: 0, ...c },
+  connect: { ...DEFAULT_CONNECT, runScale: "out", chromaticOn: true, passingOn: true, graceOn: true, passing: 0, chromatic: 0, grace: 0, ...c },
 });
 const bass = (...pitches: number[]): Note[] => pitches.map((pitch, i) => ({ pitch, startTime: i * 2, duration: 2, velocity: 100 }));
 const ctx = { tempo: 120, seed: 1, scale: C_MAJOR };
@@ -31,6 +31,15 @@ describe("connect", () => {
     expect(process(bass(48, 55), params({ chromatic: 100, chromaticVelocity: 50 }), ctx).added[0]!.velocity).toBe(50);
     const down = process(bass(55, 48), params({ chromatic: 100, steps: 2 }), ctx);
     expect(down.added.map((n) => n.pitch)).toEqual([50, 49]);
+  });
+
+  it("steps through the scale in in-scale mode, and by semitones with Scale Mode off", () => {
+    const D_MAJOR = { root: 2, intervals: [0, 2, 4, 5, 7, 9, 11] };
+    const run = (from: number, to: number, scale?: typeof D_MAJOR) =>
+      process(bass(from, to), params({ chromatic: 100, steps: 3, runScale: "in" }), { tempo: 120, seed: 1, ...(scale && { scale }) }).added.map((n) => n.pitch);
+    expect(run(50, 57, D_MAJOR)).toEqual([52, 54, 55]); // E F# G into A
+    expect(run(62, 55, D_MAJOR)).toEqual([61, 59, 57]); // C# B A into G
+    expect(run(50, 57)).toEqual([54, 55, 56]); // no scale: semitones
   });
 
   it("shortens the run to fit half the gap and skips gaps under an 8th", () => {

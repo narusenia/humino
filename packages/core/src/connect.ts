@@ -10,13 +10,15 @@ export type RunDirection = "auto" | "up" | "down";
 
 /** Each kind has its own switch (off by default, so settings saved before v2 never gain notes) and velocity. */
 export type ConnectParams = {
-  /** Semitone run into the next bass note (rolled before passing). */
+  /** Run into the next bass note, a step at a time (rolled before passing). */
   chromaticOn: boolean;
   /** 0..100 % chance. */
   chromatic: number;
   /** 1..6 run notes. */
   steps: number;
   runDirection: RunDirection;
+  /** "in": run steps through the scale; "out": by semitones, leaving the scale. */
+  runScale: "in" | "out";
   /** 0..100 % of the bass note the run leaves. */
   chromaticVelocity: number;
   /** Scale tone between two bass notes. */
@@ -44,6 +46,7 @@ export const DEFAULT_CONNECT: ConnectParams = {
   chromatic: 30,
   steps: 2,
   runDirection: "auto",
+  runScale: "in",
   chromaticVelocity: 80,
   passingOn: false,
   passing: 30,
@@ -75,10 +78,12 @@ function passingTone(from: number, to: number, s: Scale): number | undefined {
   return best;
 }
 
-const below = (p: number, s?: Scale) => {
-  if (s) for (let d = 1; d <= 12; d++) if (inScale(s, p - d)) return p - d;
-  return p - 1;
+/** Next scale tone below (or above, `dir` = 1) `p`; a semitone without a scale. */
+const stepFrom = (p: number, s?: Scale, dir: 1 | -1 = -1) => {
+  if (s) for (let d = 1; d <= 12; d++) if (inScale(s, p + dir * d)) return p + dir * d;
+  return p + dir;
 };
+const below = (p: number, s?: Scale) => stepFrom(p, s);
 
 /** Ends `n` no later than `t`, keeping a minimal length. */
 const trimTo = (n: Note, t: number) => {
@@ -122,7 +127,10 @@ export function applyConnect(
       if (p.chromaticOn && rRun < p.chromatic / 100) {
         const dir = p.runDirection === "auto" ? (pb.pitch > nb.pitch ? "down" : "up") : p.runDirection;
         const n = Math.max(1, Math.min(Math.round(p.steps), room));
-        pitches = Array.from({ length: n }, (_, k) => nb.pitch + (dir === "up" ? -(n - k) : n - k));
+        const rs = p.runScale === "in" ? scale : undefined;
+        const side = dir === "up" ? -1 : 1; // "up" climbs from below
+        pitches = [stepFrom(nb.pitch, rs, side)];
+        while (pitches.length < n) pitches.unshift(stepFrom(pitches[0]!, rs, side));
       } else if (p.passingOn && scale && rPass < p.passing / 100) {
         pct = p.passingVelocity;
         const t = passingTone(pb.pitch, nb.pitch, scale);

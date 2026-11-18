@@ -136,10 +136,11 @@ const onOff: [boolean, string][] = [
   [true, "on"],
 ];
 const CONNECT: Def[] = [
-  { kind: "choice", section: "connect", key: "chromaticOn", label: "chromatic run", options: onOff, tip: ["Semitone steps into the next bass note", "次のベースへ半音ずつ近づく音を足す"] },
+  { kind: "choice", section: "connect", key: "chromaticOn", label: "run", options: onOff, tip: ["Steps into the next bass note", "次のベースへ 1 音ずつ近づく音を足す"] },
   { kind: "num", section: "connect", key: "chromatic", label: "chance", min: 0, max: 100, step: 1, unit: "%", tip: ["Chance per chord change", "和音が変わるごとに入れる確率"] },
   { kind: "num", section: "connect", key: "steps", label: "steps", min: 1, max: 6, step: 1, tip: ["Run notes, 16ths each; fewer when there is no room", "半音で近づく音の数（1 音 16 分）。間が足りなければ減らす"] },
   { kind: "choice", section: "connect", key: "runDirection", label: "from", options: [["auto", "auto"], ["up", "below"], ["down", "above"]], tip: ["Side the run comes from; auto follows the previous bass note", "どちらから近づくか。auto は前のベースの側から"] },
+  { kind: "choice", section: "connect", key: "runScale", label: "notes", options: [["in", "in scale"], ["out", "chromatic"]], tip: ["Step through the scale, or by semitones outside it (semitones when Scale Mode is off)", "スケール音で近づくか、スケール外の半音も使うか（Scale Mode がオフなら半音）"] },
   { kind: "num", section: "connect", key: "chromaticVelocity", label: "velocity", min: 0, max: 100, step: 1, unit: "%", tip: ["Velocity as a % of the bass note the run leaves", "前のベースに対するベロシティの %"] },
   { kind: "choice", section: "connect", key: "passingOn", label: "passing tone", options: onOff, tip: ["A scale tone between two bass notes (needs Scale Mode)", "2 つのベースのあいだにスケール音を足す（Scale Mode が必要）"] },
   { kind: "num", section: "connect", key: "passing", label: "chance", min: 0, max: 100, step: 1, unit: "%", tip: ["Chance per chord change, when no run was added", "和音が変わるごとに入れる確率（Chromatic Run が入らなかったとき）"] },
@@ -357,7 +358,7 @@ function connectLanes() {
     h("span", { className: "scale-name" }, s ? `${NAMES[s.root % 12]} ${s.name ?? ""}`.trim() : ja ? "Scale Mode オフ" : "Scale Mode off"),
   );
   return [
-    lane(...pick("chromaticOn", "chromatic", "steps", "runDirection", "chromaticVelocity")),
+    lane(...pick("chromaticOn", "chromatic", "steps", "runDirection", "runScale", "chromaticVelocity")),
     lane(...pick("passingOn", "passing", "passingVelocity"), scale),
     lane(...pick("graceOn", "grace", "graceSteps", "graceLength", "graceScale", "graceVelocity")),
   ];
