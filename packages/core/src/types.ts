@@ -24,6 +24,8 @@ export type Context = {
   seed: number;
   /** Assumed 4 (ADR / design.md: only 4/4 is designed for v1). */
   beatsPerBar?: number;
+  /** Clip end in beats (the clip's loop end); defaults to the last note end. */
+  clipEnd?: number;
 };
 
 export const DEFAULT_VELOCITY = 100;
