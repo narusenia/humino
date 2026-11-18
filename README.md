@@ -28,6 +28,12 @@ With notes selected, only those notes and the rest of their chords are processed
 
 Every apply starts again from the original notes, so the variation never piles up. One undo reverts an apply.
 
+## MIDI Tools version
+
+`humino.amxd` is a MIDI Transformation for Live 12 Suite (Max for Live). It works on the notes selected in the piano roll and re-applies as you turn its dials, so you can listen while adjusting.
+
+Put `humino.amxd` in `User Library/MIDI Tools/Max Transformations/`, then pick humino in the Transform tab of the clip view. The panel has Mode, a preset menu, Drift, Jitter, Vel ±, Swing, Strum and Legato. The groove table, the other parameters and hand edits are only in the Extension.
+
 ## Features
 
 ### v1

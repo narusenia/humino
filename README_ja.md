@@ -28,6 +28,12 @@ MIDI クリップを右クリックして、次のどれかを選びます。
 
 何度適用しても、毎回元のノートから処理し直すので、揺れが積み重なりません。適用は 1 回の取り消しで元に戻せます。
 
+## MIDI Tools 版
+
+`humino.amxd` は Live 12 Suite の MIDI Tools で使う Transformation（Max for Live）です。ピアノロールで選んだノートにかかり、つまみを回すとその場でかけ直すので、聴きながら調整できます。
+
+`humino.amxd` を `User Library/MIDI Tools/Max Transformations/` に置き、クリップビューの Transform タブで humino を選びます。パネルにあるのは Mode、プリセット、Drift、Jitter、Vel ±、Swing、Strum、Legato です。Groove の表やそのほかの設定、手での修正は Extension 版だけで使えます。
+
 ## 機能
 
 ### v1
