@@ -4,7 +4,7 @@
 // writes params through the same get / set. The 16-step groove table does not
 // fit the 152 × 147 panel and stays in the Extension.
 
-import { DEFAULT_CONNECT, DEFAULT_GROOVE, DEFAULT_HUMANIZE, DEFAULT_PARAMS, DEFAULT_STRUM, type Mode, type Params } from "@humino/core";
+import { DEFAULT_CONNECT, DEFAULT_GROOVE, DEFAULT_HUMANIZE, DEFAULT_PARAMS, DEFAULT_STRUM, DEFAULT_VOICING, type Mode, type Params } from "@humino/core";
 
 export const PAGES = ["Hum", "Feel", "Str", "Con"];
 
@@ -63,6 +63,9 @@ export const CONTROLS: Control[] = [
   tab("direction", "Direction", "Follow the strumming hand (Auto) or downstrokes only.", 2, [4, 44], ["auto", "down"] as const, ["Auto", "Dn"], (p) => p.strum.direction, (p, v) => (p.strum.direction = v)),
   tab("motion", "Motion", "How fast the hand moves: Auto, 8th or 16th notes.", 2, [52, 50], ["auto", 8, 16] as const, ["A", "8", "16"], (p) => p.strum.motion, (p, v) => (p.strum.motion = v)),
   tab("anchor", "Anchor", "Which string lands on the grid: the first or the middle one.", 2, [106, 42], ["first", "center"] as const, ["1st", "Ctr"], (p) => p.strum.anchor, (p, v) => (p.strum.anchor = v)),
+  toggle("voicing", "Voicing", "Rewrites each chord as a shape a guitarist can play, one note per string, and strums it string by string.", 2, [4, 44], (p) => p.voicing.on, (p, v) => (p.voicing.on = v)),
+  tab("tuning", "Tuning", "Tuning the voicing uses: standard or drop D.", 2, [4, 44], ["standard", "dropd"] as const, ["Std", "Drop D"], (p) => p.voicing.tuning, (p, v) => (p.voicing.tuning = v)),
+  dial("capo", "Capo", "Capo fret for the voicing (0 = none).", 2, 0, 7, UNIT.int, (p) => p.voicing.capo, (p, v) => (p.voicing.capo = Math.round(v))),
   // Con: chromatic run and passing tone (bass), grace notes (top). The switches and amounts live in the picture.
   dial("chromatic", "Run %", "Chance of a semitone run into the next bass note.", 3, 0, 100, UNIT.pct, (p) => p.connect.chromatic, (p, v) => (p.connect.chromatic = v)),
   dial("steps", "Run Steps", "Run notes, 16ths each. Fewer when there is no room.", 3, 1, 6, UNIT.int, (p) => p.connect.steps, (p, v) => (p.connect.steps = Math.max(1, Math.round(v)))),
@@ -122,6 +125,7 @@ export const neutral = (): Params => ({
   pedal: "off",
   connect: { ...DEFAULT_CONNECT },
   chordWindow: DEFAULT_PARAMS.chordWindow,
+  voicing: { ...DEFAULT_VOICING },
 });
 const only = (f: (p: Params) => void) => () => {
   const p = neutral();
@@ -140,6 +144,7 @@ const STRUM: (Field | null)[][] = [
   [f("down"), f("up")],
   [f("speedjitter"), f("taper")],
   [f("upskip"), f("overlap")],
+  [f("tuning", "Voicing", "voicing"), f("capo")],
 ];
 const CON: (Field | null)[][] = [
   [f("chromatic", "Run", "runon"), f("steps", "Steps"), f("runvel", "Vel")],

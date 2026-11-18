@@ -7,7 +7,7 @@
 // re-applying never stacks (no original-note store needed, unlike the SDK version).
 
 import { DEVICES, layout } from "./controls.js";
-import { BUILTIN_PRESETS, process, type Mode, type Note, type Params, type Scale } from "@humino/core";
+import { BUILTIN_PRESETS, chordWindowBeats, process, voice, type Mode, type Note, type Params, type Scale } from "@humino/core";
 
 type ToolNote = {
   note_id?: number;
@@ -77,23 +77,41 @@ const toCore = (n: ToolNote): Note => ({
   ...(n.release_velocity !== undefined && { releaseVelocity: n.release_velocity }),
 });
 
+/** A new note for Live (no note_id), keeping the fields core carries. */
+const fromCore = (n: Note): ToolNote => ({
+  pitch: n.pitch,
+  start_time: n.startTime,
+  duration: n.duration,
+  ...(n.velocity !== undefined && { velocity: n.velocity }),
+  ...(n.muted !== undefined && { mute: n.muted ? 1 : 0 }),
+  ...(n.probability !== undefined && { probability: n.probability }),
+  ...(n.velocityDeviation !== undefined && { velocity_deviation: n.velocityDeviation }),
+  ...(n.releaseVelocity !== undefined && { release_velocity: n.releaseVelocity }),
+});
+
 /** Called by v8 with the joined notes + context dictionary. */
 g.msg_dictionary = (input: ToolInput) => {
   const notes = input.notes ?? [];
   const clipEnd = input.clip?.time_selection_end ?? input.clip?.last_note_end;
   const sc = scale(input);
   showScale(sc);
-  const r = process(notes.map(toCore), params, {
-    tempo: tempo(),
+  const bpm = tempo();
+  // Voicing rewrites the chords before anything else; its notes replace the originals as new notes.
+  const voiced = params.mode === "guitar" && params.voicing.on;
+  const base = voiced ? voice(notes.map(toCore), params.voicing, chordWindowBeats(params, bpm)) : notes.map(toCore);
+  const r = process(base, params, {
+    tempo: bpm,
     seed: input.seed ?? 0,
     ...(clipEnd !== undefined && { clipEnd }),
     ...(sc && { scale: sc }),
   });
-  const out = notes.flatMap((src, i) => {
-    if (r.dropped.has(i)) return [];
-    const n = r.final[i]!;
-    return [{ ...src, start_time: n.startTime, duration: n.duration, velocity: n.velocity ?? src.velocity }];
-  });
+  const out = voiced
+    ? r.notes.filter((n) => !r.added.includes(n)).map(fromCore)
+    : notes.flatMap((src, i) => {
+        if (r.dropped.has(i)) return [];
+        const n = r.final[i]!;
+        return [{ ...src, start_time: n.startTime, duration: n.duration, velocity: n.velocity ?? src.velocity }];
+      });
   // Connect's notes are new (no note_id); Live re-sends the originals on every apply, so they never pile up.
   const added = r.added.map((n) => ({ pitch: n.pitch, start_time: n.startTime, duration: n.duration, velocity: n.velocity }));
   outlet_dictionary(0, { notes: [...out, ...added] });

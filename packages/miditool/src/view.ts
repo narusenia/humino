@@ -7,7 +7,7 @@
 // edits go out as "<key> <v>" to the matching (hidden) dial or button.
 
 import { CONTROLS, DEVICES, neutral, type Control, type Field, type Picture } from "./controls.js";
-import { process, type Note, type Params, type Scale } from "@humino/core";
+import { process, voice, type Note, type Params, type Scale } from "@humino/core";
 
 const g = globalThis as Record<string, unknown>;
 g.inlets = 1;
@@ -64,7 +64,8 @@ const BOX = 9; // switch box + gap before a label
 /** Label and value of a cell. */
 const cellText = (field: Field) => {
   const c = control(field.key)!;
-  return [field.label ?? c.label, format(c, c.get(params))] as const;
+  const value = c.kind === "tab" ? c.options[c.get(params)] ?? "" : format(c, c.get(params));
+  return [field.label ?? c.label, value] as const;
 };
 
 function drawFields(rows: (Field | null)[][], w: number) {
@@ -211,50 +212,55 @@ const PICTURES: Record<Picture, (a: Area) => void> = {
   },
 
   strum(a) {
-    // one downstroke and one upstroke of an open E chord, each string's start in ms
+    // two strokes, each string's start in ms: an open E, or a piano C run through the voicing when it is on
     const p = neutral();
     p.mode = "guitar";
     // auto motion needs a whole phrase to decide; the picture assumes 8ths
     const motion = params.strum.motion === "auto" ? 8 : params.strum.motion;
     p.strum = { ...params.strum, motion };
-    const shape = [40, 47, 52, 56, 59, 64];
     const second = motion === 16 ? 0.25 : 0.5;
-    const input = [...chord(0, shape, second), ...chord(second, shape, second)];
+    const voiced = params.voicing.on;
+    const one = (t: number): Note[] =>
+      voiced
+        ? voice(chord(t, [48, 55, 64, 67, 72], second), params.voicing)
+        : chord(t, [40, 47, 52, 56, 59, 64], second).map((n, s) => ({ ...n, string: 6 - s }));
+    const input = [...one(0), ...one(second)];
     const r = process(input, p, ctx);
     const offs = input.map((n, i) => msOf(r.final[i]!.startTime - n.startTime));
     const lo = Math.min(0, ...offs);
     const span = Math.max(40, Math.max(...offs) - lo) * 1.15;
     const half = (a.w - 6) / 2;
-    [0, 1].forEach((k) => {
+    [0, second].forEach((t, k) => {
       const px = a.x + k * (half + 6);
       const x = (ms: number) => px + 4 + ((ms - lo) / span) * (half - 8);
-      const y = (string: number) => a.y + 12 + (string / 5) * (a.h - 18);
-      const idx = shape.map((_, s) => k * 6 + s);
-      const sounding = idx.filter((i) => !r.dropped.has(i)); // low to high
-      const down = r.final[sounding[0]!]!.startTime <= r.final[sounding[sounding.length - 1]!]!.startTime;
+      const y = (string: number) => a.y + 12 + ((string - 1) / 5) * (a.h - 18);
+      const idx = input.map((n, i) => (n.startTime === t ? i : -1)).filter((i) => i >= 0);
+      const sounding = idx.filter((i) => !r.dropped.has(i)).sort((i, j) => input[j]!.string! - input[i]!.string!); // low to high
+      const down = sounding.length < 2 || r.final[sounding[0]!]!.startTime <= r.final[sounding[sounding.length - 1]!]!.startTime;
       rgba(C.dim);
       mgraphics.set_font_size(8);
       text(params.mode === "guitar" ? (down ? "Down" : "Up") : "Guitar only", px + 4, a.y + 8);
       rgba(C.frame);
       mgraphics.set_line_width(1);
       line(Math.round(x(0)) + 0.5, a.y + 10, Math.round(x(0)) + 0.5, a.y + a.h);
-      // strings, high E on top
-      const pts: [number, number][] = [];
-      idx.forEach((i, s) => {
-        const yy = y(5 - s);
+      for (let s = 1; s <= 6; s++) {
         rgba(C.frame, 0.6);
-        line(px + 2, yy, px + half - 2, yy);
+        line(px + 2, y(s), px + half - 2, y(s));
+      }
+      const pts: [number, number][] = [];
+      for (const i of idx) {
+        const yy = y(input[i]!.string ?? 1);
         if (r.dropped.has(i)) {
           rgba(C.dim);
           mgraphics.rectangle(x(offs[i]!) - 2, yy - 2, 4, 4);
           mgraphics.stroke();
-          return;
+          continue;
         }
         pts.push([x(offs[i]!), yy]);
         rgba(C.fg, 0.35 + 0.65 * ((r.final[i]!.velocity ?? 100) / 127));
         mgraphics.rectangle(x(offs[i]!) - 2, yy - 2, 4, 4);
         mgraphics.fill();
-      });
+      }
       pts.sort((p1, p2) => p1[0] - p2[0]);
       rgba(C.fg, 0.5);
       pts.forEach(([px1, py1], j) => (j ? mgraphics.line_to(px1, py1) : mgraphics.move_to(px1, py1)));
@@ -359,7 +365,16 @@ g.onclick = (x: number, y: number) => {
     return;
   }
   const c = control(cell.field.key);
-  if (usable(c)) drag = { key: cell.field.key, y, v: c!.get(params) };
+  if (!usable(c)) return;
+  if (c!.kind === "tab") {
+    // a choice: each click moves to the next option
+    const v = (c!.get(params) + 1) % c!.options.length;
+    c!.set(params, v);
+    mgraphics.redraw();
+    outlet(0, c!.key, v);
+    return;
+  }
+  drag = { key: cell.field.key, y, v: c!.get(params) };
 };
 g.ondrag = (_x: number, y: number, button: number) => {
   if (!drag) return;
