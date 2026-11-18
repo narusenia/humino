@@ -291,6 +291,7 @@ function renderTabs() {
 
 function renderParams() {
   const main = $("params");
+  main.style.setProperty("--section", `var(${STAGE_COLOR[tab]})`);
   if (tab === "groove") main.replaceChildren(grooveTable());
   else if (tab === "humanize") main.replaceChildren(...group(HUMANIZE));
   else main.replaceChildren(...group(STRUM), fixedRow());
@@ -346,7 +347,15 @@ function renderSeed() {
 // ---------------------------------------------------------------- preview
 
 const canvas = $<HTMLCanvasElement>("preview");
+const PAD = 12;
+/** Visible time window in beats; null = whole clip. */
+let view: { t0: number; t1: number } | null = null;
+let fullEnd = 1;
 let chordHits: { x: number; key: string }[] = [];
+
+const span = () => view ?? { t0: 0, t1: fullEnd };
+const plotWidth = () => canvas.getBoundingClientRect().width - PAD * 2;
+
 canvas.addEventListener("click", (e) => {
   const px = e.clientX - canvas.getBoundingClientRect().left;
   const hit = chordHits.reduce<{ x: number; key: string } | undefined>(
@@ -362,6 +371,34 @@ canvas.addEventListener("click", (e) => {
   renderParams(); // refresh the fixed-chords count
   edited();
 });
+
+// Pinch or ⌘/Ctrl + scroll zooms around the pointer; plain scroll pans; double-click shows the whole clip.
+canvas.addEventListener(
+  "wheel",
+  (e) => {
+    e.preventDefault();
+    const { t0, t1 } = span();
+    const len = t1 - t0;
+    const perPx = len / plotWidth();
+    if (e.ctrlKey || e.metaKey) {
+      const at = t0 + (e.clientX - canvas.getBoundingClientRect().left - PAD) * perPx;
+      const nextLen = Math.min(fullEnd, Math.max(0.5, len * Math.exp(e.deltaY * 0.01)));
+      const k = (at - t0) / len;
+      setView(at - k * nextLen, nextLen);
+    } else {
+      setView(t0 + (Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY) * perPx, len);
+    }
+  },
+  { passive: false },
+);
+canvas.addEventListener("dblclick", () => ((view = null), schedule()));
+
+function setView(t0: number, len: number) {
+  const start = Math.min(Math.max(0, t0), Math.max(0, fullEnd - len));
+  view = len >= fullEnd ? null : { t0: start, t1: start + len };
+  schedule();
+}
+
 let pending = false;
 function schedule() {
   if (pending) return;
@@ -370,6 +407,11 @@ function schedule() {
     pending = false;
     draw();
   });
+}
+
+function roundRect(c: CanvasRenderingContext2D, x0: number, y0: number, w: number, hh: number) {
+  c.beginPath();
+  c.roundRect(x0, y0, w, hh, Math.min(2, w / 2, hh / 2));
 }
 
 function draw() {
@@ -393,28 +435,45 @@ function draw() {
 
   const r = process(notes, { ...params, strum: { ...params.strum, forced } }, { tempo: input.tempo, seed, clipEnd: input.clipEnd });
   const final = r.snapshots.pedal;
-  const pad = 16;
-  const t1 = Math.max(input.clipEnd, ...final.map((n) => n.startTime + n.duration), 1);
-  const lo = Math.min(...notes.map((n) => n.pitch)) - 1;
-  const hi = Math.max(...notes.map((n) => n.pitch)) + 1;
-  const rowH = (hgt - pad) / (hi - lo + 1);
-  const x = (t: number) => pad + (t / t1) * (w - pad * 2);
-  const y = (p: number) => pad / 2 + (hi - p) * rowH;
+  fullEnd = Math.max(input.clipEnd, ...final.map((n) => n.startTime + n.duration), 1);
+  const { t0, t1 } = span();
+  const showArrows = tab === "strum" && params.mode === "guitar";
+  const top = showArrows ? 22 : 8;
+
+  // Fold: one row per pitch that is used, like Live's Fold.
+  const pitches = [...new Set(notes.map((n) => n.pitch))].sort((a, b) => b - a);
+  const row = new Map(pitches.map((p, k) => [p, k]));
+  const rowH = Math.min(18, (hgt - top - 6) / pitches.length);
+  const noteH = Math.max(2, rowH - 2);
+  const x = (t: number) => PAD + ((t - t0) / (t1 - t0)) * (w - PAD * 2);
+  const y = (p: number) => top + row.get(p)! * rowH;
+  const pxPerBeat = (w - PAD * 2) / (t1 - t0);
   const targeted = (i: number) => r.target[r.analysis.groupOf[i]!];
 
-  // bar lines
-  c.strokeStyle = color("--line");
+  c.save();
+  c.beginPath();
+  c.rect(PAD - 2, 0, w - PAD * 2 + 4, hgt);
+  c.clip();
+
+  // grid: bars always, beats once there is room
   c.lineWidth = 1;
-  for (let b = 0; b <= t1; b += 4) {
+  const beatStep = pxPerBeat >= 24 ? 1 : 4;
+  for (let b = Math.floor(t0 / beatStep) * beatStep; b <= t1; b += beatStep) {
+    c.strokeStyle = color("--line");
+    c.globalAlpha = b % 4 === 0 ? 1 : 0.5;
     c.beginPath();
-    c.moveTo(x(b) + 0.5, 0);
-    c.lineTo(x(b) + 0.5, hgt);
+    c.moveTo(Math.round(x(b)) + 0.5, top - 4);
+    c.lineTo(Math.round(x(b)) + 0.5, hgt);
     c.stroke();
   }
 
-  // originals: outline
+  // originals: faint outline
+  c.globalAlpha = 0.6;
   c.strokeStyle = color("--muted");
-  for (const n of notes) c.strokeRect(x(n.startTime) + 0.5, y(n.pitch) + 0.5, Math.max(2, x(n.startTime + n.duration) - x(n.startTime)), Math.max(2, rowH - 1));
+  for (const n of notes) {
+    roundRect(c, x(n.startTime) + 0.5, y(n.pitch) + 0.5, Math.max(2, x(n.startTime + n.duration) - x(n.startTime) - 1), noteH);
+    c.stroke();
+  }
 
   // results: notes the open tab's stage changed (start, length or velocity) take its colour
   const before: Record<Stage, Note[]> = { groove: notes, humanize: r.snapshots.groove, strum: r.snapshots.humanize, pedal: r.snapshots.strum };
@@ -427,65 +486,70 @@ function draw() {
   final.forEach((n, i) => {
     if (r.dropped.has(i)) return;
     const hit = targeted(i) && tabStages[tab].some((st) => changedBy(st, i));
-    c.globalAlpha = !targeted(i) ? 0.25 : hit ? 0.95 : 0.6;
+    c.globalAlpha = !targeted(i) ? 0.25 : hit ? 0.95 : 0.55;
     c.fillStyle = hit ? color(STAGE_COLOR[tab]) : color("--text");
-    c.fillRect(x(n.startTime), y(n.pitch), Math.max(2, x(n.startTime + n.duration) - x(n.startTime)), Math.max(2, rowH - 1));
+    roundRect(c, x(n.startTime) + 0.5, y(n.pitch) + 0.5, Math.max(2, x(n.startTime + n.duration) - x(n.startTime) - 1), noteH);
+    c.fill();
   });
 
-  // displacement per stage, stacked: original → groove → humanize → strum
-  const chain: [Stage, string][] = [
-    ["groove", "--stage-groove"],
-    ["humanize", "--stage-humanize"],
-    ["strum", "--stage-strum"],
-  ];
+  // how far the open tab's stage moved each note: a line from the previous start
   const activeStage = TABS.find(([id]) => id === tab)![2];
-  notes.forEach((n, i) => {
-    if (!targeted(i)) return;
-    let from = n.startTime;
-    for (const [stage, v] of chain) {
-      const to = r.snapshots[stage][i]!.startTime;
-      if (Math.abs(x(to) - x(from)) >= 0.5) {
-        c.globalAlpha = stage === activeStage ? 1 : 0.35;
-        c.strokeStyle = color(v);
-        c.lineWidth = 3;
-        c.beginPath();
-        c.moveTo(x(from), y(n.pitch) - 1);
-        c.lineTo(x(to), y(n.pitch) - 1);
-        c.stroke();
-      }
-      from = to;
-    }
-  });
+  if (activeStage) {
+    c.globalAlpha = 0.9;
+    c.strokeStyle = color(STAGE_COLOR[tab]);
+    c.lineWidth = 2;
+    notes.forEach((_, i) => {
+      if (!targeted(i) || r.dropped.has(i)) return;
+      const from = x(before[activeStage][i]!.startTime);
+      const to = x(r.snapshots[activeStage][i]!.startTime);
+      if (Math.abs(to - from) < 1.5) return;
+      const py = y(notes[i]!.pitch) + noteH / 2 + 0.5;
+      c.beginPath();
+      c.moveTo(from, py);
+      c.lineTo(to, py);
+      c.stroke();
+    });
+  }
 
   // stroke arrows on the strum tab: click to cycle auto → down → up → auto
   chordHits = [];
-  if (tab === "strum" && params.mode === "guitar") {
+  if (showArrows) {
     const p = { ...params.strum, forced };
     const motion = resolveMotion(r.analysis, p);
-    c.font = `12px ${color("--font")}`;
-    c.textAlign = "center";
+    let lastX = -Infinity;
     for (const g of r.analysis.groups) {
       if (g.idx.length < 2) continue;
+      const px = Math.round(x(g.start)) + 4.5;
+      if (px - lastX < 14 || px < PAD - 4 || px > w - PAD + 4) continue; // too crowded or off screen: zoom in
+      lastX = px;
       const key = chordKey(g.start);
-      const px = x(g.start);
+      const down = strumDirection(g, motion, p) === "down";
       c.globalAlpha = 1;
-      c.fillStyle = forced[key] ? color("--stage-strum") : color("--text-dim");
-      c.fillText(strumDirection(g, motion, p) === "down" ? "↓" : "↑", px + 4, 11);
-      chordHits.push({ x: px + 4, key });
+      c.strokeStyle = forced[key] ? color("--stage-strum") : color("--text-dim");
+      c.lineWidth = forced[key] ? 1.75 : 1.25;
+      const [tip, tail] = down ? [16, 5] : [5, 16];
+      const dir = down ? -1 : 1;
+      c.beginPath();
+      c.moveTo(px, tail);
+      c.lineTo(px, tip);
+      c.moveTo(px - 3.5, tip + 3.5 * dir);
+      c.lineTo(px, tip);
+      c.lineTo(px + 3.5, tip + 3.5 * dir);
+      c.stroke();
+      chordHits.push({ x: px, key });
     }
-    c.textAlign = "start";
   }
 
   // drift curve on the humanize tab
   if (tab === "humanize" && r.drift.length > 1) {
-    const mid = hgt / 2;
-    const scale = (hgt / 2 - pad) / Math.max(1, params.humanize.drift * 2.5, ...r.drift.map(Math.abs));
-    c.globalAlpha = 0.4;
+    const mid = top + (hgt - top) / 2;
+    const scale = ((hgt - top) / 2 - 8) / Math.max(1, params.humanize.drift * 2.5, ...r.drift.map(Math.abs));
+    c.globalAlpha = 0.5;
     c.strokeStyle = color("--line");
     c.setLineDash([3, 3]);
     c.beginPath();
-    c.moveTo(pad, mid);
-    c.lineTo(w - pad, mid);
+    c.moveTo(PAD, mid);
+    c.lineTo(w - PAD, mid);
     c.stroke();
     c.setLineDash([]);
     c.globalAlpha = 0.9;
@@ -498,6 +562,17 @@ function draw() {
       gi ? c.lineTo(px, py) : c.moveTo(px, py);
     });
     c.stroke();
+  }
+  c.restore();
+
+  // zoom hint
+  if (view) {
+    c.globalAlpha = 1;
+    c.fillStyle = color("--text-dim");
+    c.font = `11px ${color("--font")}`;
+    c.textAlign = "right";
+    c.fillText(`${(t1 - t0).toFixed(1)} beats · ${ja ? "ダブルクリックで全体" : "double-click: whole clip"}`, w - PAD, hgt - 6);
+    c.textAlign = "start";
   }
   c.globalAlpha = 1;
 }
