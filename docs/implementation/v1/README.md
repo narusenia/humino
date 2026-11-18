@@ -19,3 +19,4 @@
 | 13 | extension：Groove の表 | 16 本のステップ表（timing / velocity） | 描いた表が結果に反映される | 実装済み（Live で未確認） |
 | 14 | プリセット | 組み込み 6 種、ユーザープリセットの保存と読み込み | 保存したプリセットが Live の再起動後も残る | 実装済み（Live で未確認） |
 | 15 | 配布 | `.ablx`（OFL.txt を同梱）、GitHub Releases、CHANGELOG | Windows と macOS でインストールして動く | .ablx 作成済み（Releases と実機確認が残り） |
+| 16 | ピアノロールでの編集 | ダイアログ内の選択、ロック、和音ごとの stroke・speed・up skip、⌥ ドラッグでのずらし、ベロシティのレーン、音名・小節番号、ホバーの詳細、拡大縮小、960 × 720 | Live で選択・ロック・ずらしが Apply に反映される | 実装済み（Live で未確認） |
