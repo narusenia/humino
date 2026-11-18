@@ -2,7 +2,7 @@
 
 An Ableton Live Extension that makes programmed guitar and piano MIDI sound played. It rewrites the notes of a MIDI clip, adding human variation to timing, velocity, note length and guitar strums.
 
-Early development: there is no working release yet.
+Early development. Tested on macOS; Windows is untested.
 
 ## Requirements
 
