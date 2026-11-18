@@ -4,6 +4,7 @@ import {
   analyze,
   BUILTIN_PRESETS,
   chordKey,
+  noteKey,
   resolveMotion,
   strumDirection,
   DEFAULT_PARAMS,
@@ -12,7 +13,10 @@ import {
   type Mode,
   type Params,
   type Preset,
+  type ChordOverride,
+  type Direction,
   type Note,
+  type Overrides,
   type Stage,
 } from "@humino/core";
 import type { DialogInput, DialogOutput } from "../src/dialog.js";
@@ -45,7 +49,9 @@ let userPresets: Preset[] = clone(input.presets);
 let presetsChanged = false;
 let presetIndex = -1;
 /** Stroke directions fixed by Strum Down / Up; Clear empties it. */
-let forced = { ...input.forced };
+let overrides: Required<Overrides> = { chords: {}, notes: {}, ...clone(input.overrides) };
+/** Dialog-side selection, one flag per input note (starts from the clip's selection). */
+let selected = input.notes.map((n) => !!n.selected);
 const allPresets = () => [...BUILTIN_PRESETS, ...userPresets];
 const triplet = analyze(input.notes).triplet;
 
@@ -297,12 +303,12 @@ function renderParams() {
   else main.replaceChildren(...group(STRUM), fixedRow());
 }
 
-/** Shows how many chords Strum Down / Up fixed, with a way to release them. */
+/** Count of hand edits (chord and note overrides) with a way to drop them all. */
 function fixedRow() {
-  const n = Object.keys(forced).length;
-  const text = ja ? `向きを固定した和音：${n}` : `fixed chords: ${n}`;
-  const clear = h("button", { disabled: n === 0, onclick: () => ((forced = {}), renderParams(), edited()) }, "Clear");
-  clear.title = ja ? "Strum Down / Up で固定した向きを解除して自動に戻す" : "Release directions fixed by Strum Down / Up";
+  const n = Object.keys(overrides.chords).length + Object.keys(overrides.notes).length;
+  const text = ja ? `手で直した箇所：${n}` : `hand edits: ${n}`;
+  const clear = h("button", { disabled: n === 0, onclick: () => ((overrides = { chords: {}, notes: {} }), renderSelbar(), renderParams(), edited()) }, "Clear");
+  clear.title = ja ? "向き、ロック、手での調整をすべて解除する" : "Drop every direction, lock and nudge";
   return h("div", { className: "fixed" }, h("span", { className: "label" }, text), clear);
 }
 
@@ -347,56 +353,239 @@ function renderSeed() {
 // ---------------------------------------------------------------- preview
 
 const canvas = $<HTMLCanvasElement>("preview");
+const tip = $("tip");
+const LABEL_W = 34; // note names
 const PAD = 12;
+const BAR_STRIP = 16; // bar numbers
+const ARROW_STRIP = 18; // stroke arrows
+const VEL_H = 56; // velocity lane
+const NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+const noteName = (p: number) => `${NAMES[p % 12]}${Math.floor(p / 12) - 2}`; // Live: C3 = 60
+
 /** Visible time window in beats; null = whole clip. */
 let view: { t0: number; t1: number } | null = null;
 let fullEnd = 1;
+let last: ReturnType<typeof process> | null = null;
+let geo = { w: 0, h: 0, top: 0, notesBottom: 0, rowH: 0, noteH: 0, rows: new Map<number, number>() };
 let chordHits: { x: number; key: string }[] = [];
 
 const span = () => view ?? { t0: 0, t1: fullEnd };
-const plotWidth = () => canvas.getBoundingClientRect().width - PAD * 2;
+const plotW = () => geo.w - LABEL_W - PAD;
+const xOf = (t: number) => {
+  const { t0, t1 } = span();
+  return LABEL_W + ((t - t0) / (t1 - t0)) * plotW();
+};
+const tOf = (px: number) => {
+  const { t0, t1 } = span();
+  return t0 + ((px - LABEL_W) / plotW()) * (t1 - t0);
+};
+const yOf = (p: number) => geo.top + geo.rows.get(p)! * geo.rowH;
 
-canvas.addEventListener("click", (e) => {
-  const px = e.clientX - canvas.getBoundingClientRect().left;
-  const hit = chordHits.reduce<{ x: number; key: string } | undefined>(
-    (best, c) => (Math.abs(c.x - px) <= 8 && (!best || Math.abs(c.x - px) < Math.abs(best.x - px)) ? c : best),
-    undefined,
-  );
-  if (!hit) return;
-  const next = { undefined: "down", down: "up", up: undefined } as const;
-  const to = next[String(forced[hit.key]) as keyof typeof next];
-  forced = { ...forced };
-  if (to) forced[hit.key] = to;
-  else delete forced[hit.key];
-  renderParams(); // refresh the fixed-chords count
-  edited();
+const notesWithSelection = () => input.notes.map((n, i) => ({ ...n, selected: selected[i]! }));
+const chordOf = (i: number) => last!.analysis.groups[last!.analysis.groupOf[i]!]!;
+
+function compute() {
+  last = process(notesWithSelection(), params, { tempo: input.tempo, seed, clipEnd: input.clipEnd }, overrides);
+  return last;
+}
+
+/** Note under the pointer (processed position first, then the original). */
+function noteAt(px: number, py: number): number | undefined {
+  if (!last) return undefined;
+  const hit = (n: Note) =>
+    py >= yOf(n.pitch) && py <= yOf(n.pitch) + geo.noteH && px >= xOf(n.startTime) - 2 && px <= Math.max(xOf(n.startTime + n.duration), xOf(n.startTime) + 4);
+  for (let i = input.notes.length - 1; i >= 0; i--) if (!last.dropped.has(i) && hit(last.final[i]!)) return i;
+  for (let i = input.notes.length - 1; i >= 0; i--) if (hit(input.notes[i]!)) return i;
+  return undefined;
+}
+
+const local = (e: MouseEvent) => {
+  const r = canvas.getBoundingClientRect();
+  return [e.clientX - r.left, e.clientY - r.top] as const;
+};
+
+function selectChordOf(i: number, add: boolean) {
+  const g = chordOf(i);
+  if (!add) selected = selected.map(() => false);
+  const on = !(add && g.idx.every((k) => selected[k]));
+  for (const k of g.idx) selected[k] = on;
+}
+
+function setNoteOverride(i: number, patch: Partial<NonNullable<Overrides["notes"]>[string]>) {
+  const key = noteKey(input.notes[i]!);
+  const next = { ...overrides.notes[key], ...patch };
+  for (const k of Object.keys(next) as (keyof typeof next)[]) if (!next[k]) delete next[k];
+  overrides = { ...overrides, notes: { ...overrides.notes } };
+  if (Object.keys(next).length) overrides.notes[key] = next;
+  else delete overrides.notes[key];
+}
+
+type LooseChord = { direction?: Direction | undefined; speed?: number | undefined; upSkip?: number | undefined };
+/** Drop unset fields so an override that says nothing disappears. */
+const cleanChord = (c: LooseChord): ChordOverride =>
+  Object.fromEntries(Object.entries(c).filter(([, v]) => v !== undefined)) as ChordOverride;
+
+type Drag =
+  | { kind: "marquee"; x0: number; y0: number; x1: number; y1: number; add: boolean; base: boolean[] }
+  | { kind: "nudge"; x0: number; notes: number[]; dt0: number[] }
+  | { kind: "velocity"; y0: number; notes: number[]; dv0: number[] }
+  | { kind: "click"; x0: number; y0: number; note: number | undefined; add: boolean };
+let drag: Drag | null = null;
+
+canvas.addEventListener("pointerdown", (e) => {
+  if (!last || e.button !== 0) return;
+  e.preventDefault();
+  canvas.setPointerCapture(e.pointerId);
+  const [px, py] = local(e);
+  const selectedIdx = () => selected.flatMap((s, i) => (s ? [i] : []));
+
+  if (py < geo.top) {
+    // arrow strip: click cycles auto → down → up → auto
+    const hit = chordHits.reduce<{ x: number; key: string } | undefined>(
+      (best, c) => (Math.abs(c.x - px) <= 8 && (!best || Math.abs(c.x - px) < Math.abs(best.x - px)) ? c : best),
+      undefined,
+    );
+    if (!hit) return;
+    const next = { undefined: "down", down: "up", up: undefined } as const;
+    const cur = overrides.chords[hit.key];
+    const to = next[String(cur?.direction) as keyof typeof next];
+    const chords = { ...overrides.chords };
+    const merged = cleanChord({ ...cur, direction: to });
+    if (Object.keys(merged).length) chords[hit.key] = merged;
+    else delete chords[hit.key];
+    overrides = { ...overrides, chords };
+    renderParams();
+    edited();
+    return;
+  }
+
+  if (py > geo.notesBottom) {
+    // velocity lane: drag up / down shifts the selected notes, or the chord under the pointer
+    const t = tOf(px);
+    let notes = selectedIdx();
+    if (!notes.length) {
+      const g = last.analysis.groups.reduce((b, g) => (Math.abs(g.start - t) < Math.abs(b.start - t) ? g : b));
+      notes = g.idx;
+    }
+    drag = { kind: "velocity", y0: py, notes, dv0: notes.map((i) => overrides.notes[noteKey(input.notes[i]!)]?.dv ?? 0) };
+    return;
+  }
+
+  const i = noteAt(px, py);
+  if (i !== undefined && e.altKey) {
+    if (!selected[i]) selectChordOf(i, false);
+    const notes = selected[i] ? selectedIdx() : [i];
+    drag = { kind: "nudge", x0: px, notes, dt0: notes.map((k) => overrides.notes[noteKey(input.notes[k]!)]?.dt ?? 0) };
+    return;
+  }
+  drag = { kind: "click", x0: px, y0: py, note: i, add: e.shiftKey };
 });
 
-// Pinch or ⌘/Ctrl + scroll zooms around the pointer; plain scroll pans; double-click shows the whole clip.
+canvas.addEventListener("pointermove", (e) => {
+  const [px, py] = local(e);
+  if (!drag) return hover(px, py, e);
+  tip.hidden = true;
+  if (drag.kind === "click" && drag.note === undefined && Math.hypot(px - drag.x0, py - drag.y0) > 4) {
+    drag = { kind: "marquee", x0: drag.x0, y0: drag.y0, x1: px, y1: py, add: drag.add, base: drag.add ? [...selected] : selected.map(() => false) };
+  }
+  if (drag.kind === "marquee") {
+    drag.x1 = px;
+    drag.y1 = py;
+    const [ta, tb] = [tOf(Math.min(drag.x0, px)), tOf(Math.max(drag.x0, px))];
+    const [ya, yb] = [Math.min(drag.y0, py), Math.max(drag.y0, py)];
+    const base = drag.base;
+    selected = input.notes.map((n, k) => {
+      const inside = n.startTime + n.duration >= ta && n.startTime <= tb && yOf(n.pitch) + geo.noteH >= ya && yOf(n.pitch) <= yb;
+      return base[k]! || inside;
+    });
+    renderSelbar();
+    schedule();
+  } else if (drag.kind === "nudge") {
+    const { t0, t1 } = span();
+    const ms = ((px - drag.x0) / plotW()) * (t1 - t0) * (60000 / input.tempo);
+    const step = e.shiftKey ? 0.5 : 1;
+    drag.notes.forEach((k, j) => setNoteOverride(k, { dt: Math.round((drag as { dt0: number[] }).dt0[j]! + ms / step) * step }));
+    renderSelbar();
+    edited();
+  } else if (drag.kind === "velocity") {
+    const dv = Math.round(((drag.y0 - py) / VEL_H) * 127);
+    drag.notes.forEach((k, j) => setNoteOverride(k, { dv: Math.max(-126, Math.min(126, (drag as { dv0: number[] }).dv0[j]! + dv)) }));
+    renderSelbar();
+    edited();
+  }
+});
+
+canvas.addEventListener("pointerup", () => {
+  if (drag?.kind === "click") {
+    if (drag.note !== undefined) selectChordOf(drag.note, drag.add);
+    else if (!drag.add) selected = selected.map(() => false);
+    renderSelbar();
+    schedule();
+  }
+  drag = null;
+});
+
+canvas.addEventListener("pointerleave", () => (tip.hidden = true));
+
+// Pinch or ⌘/Ctrl + scroll zooms around the pointer; plain scroll pans; double-click on empty space shows the whole clip.
 canvas.addEventListener(
   "wheel",
   (e) => {
     e.preventDefault();
     const { t0, t1 } = span();
     const len = t1 - t0;
-    const perPx = len / plotWidth();
+    const perPx = len / plotW();
     if (e.ctrlKey || e.metaKey) {
-      const at = t0 + (e.clientX - canvas.getBoundingClientRect().left - PAD) * perPx;
+      const at = tOf(local(e)[0]);
       const nextLen = Math.min(fullEnd, Math.max(0.5, len * Math.exp(e.deltaY * 0.01)));
-      const k = (at - t0) / len;
-      setView(at - k * nextLen, nextLen);
+      setView(at - ((at - t0) / len) * nextLen, nextLen);
     } else {
       setView(t0 + (Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY) * perPx, len);
     }
   },
   { passive: false },
 );
-canvas.addEventListener("dblclick", () => ((view = null), schedule()));
+canvas.addEventListener("dblclick", (e) => {
+  const [px, py] = local(e);
+  if (py < geo.top || py > geo.notesBottom || noteAt(px, py) !== undefined) return; // arrows, notes and the lane keep their own clicks
+  view = null;
+  schedule();
+});
 
 function setView(t0: number, len: number) {
   const start = Math.min(Math.max(0, t0), Math.max(0, fullEnd - len));
   view = len >= fullEnd ? null : { t0: start, t1: start + len };
   schedule();
+}
+
+function hover(px: number, py: number, e: MouseEvent) {
+  const i = py >= geo.top && py <= geo.notesBottom ? noteAt(px, py) : undefined;
+  if (i === undefined || !last) {
+    tip.hidden = true;
+    return;
+  }
+  const orig = input.notes[i]!;
+  const ms = (b: number) => (b * 60000) / input.tempo;
+  const fmt = (v: number) => `${v >= 0 ? "+" : ""}${v.toFixed(1)}`;
+  const steps: [string, Note, Note][] = [
+    ["groove", orig, last.snapshots.groove[i]!],
+    ["humanize", last.snapshots.groove[i]!, last.snapshots.humanize[i]!],
+    ["strum", last.snapshots.humanize[i]!, last.snapshots.strum[i]!],
+  ];
+  const o = overrides.notes[noteKey(orig)];
+  const fin = last.final[i]!;
+  const lines = [
+    `${noteName(orig.pitch)} · ${last.dropped.has(i) ? (ja ? "アップで省略" : "skipped on upstroke") : `vel ${orig.velocity ?? 100} → ${fin.velocity}`}`,
+    ...steps.filter(([, a, b]) => Math.abs(b.startTime - a.startTime) > 1e-6).map(([n, a, b]) => `${n} ${fmt(ms(b.startTime - a.startTime))} ms`),
+    ...(o?.lock ? [ja ? "ロック中" : "locked"] : []),
+    ...(o?.dt ? [`nudge ${fmt(o.dt)} ms`] : []),
+    ...(o?.dv ? [`vel ${o.dv > 0 ? "+" : ""}${o.dv}`] : []),
+  ];
+  tip.replaceChildren(...lines.map((l) => h("div", {}, l)));
+  tip.hidden = false;
+  const r = canvas.getBoundingClientRect();
+  tip.style.left = `${Math.min(e.clientX + 12, r.right - 170)}px`;
+  tip.style.top = `${e.clientY + 14}px`;
 }
 
 let pending = false;
@@ -423,49 +612,71 @@ function draw() {
   c.scale(dpr, dpr);
   const css = getComputedStyle(document.documentElement);
   const color = (v: string) => css.getPropertyValue(v).trim();
+  const font = color("--font");
   c.clearRect(0, 0, w, hgt);
 
   const notes = input.notes;
   if (!notes.length) {
     c.fillStyle = color("--text-dim");
-    c.font = `13px ${color("--font")}`;
+    c.font = `13px ${font}`;
     c.fillText(ja ? "ノートがありません" : "no notes", 16, 24);
     return;
   }
 
-  const r = process(notes, { ...params, strum: { ...params.strum, forced } }, { tempo: input.tempo, seed, clipEnd: input.clipEnd });
-  const final = r.snapshots.pedal;
-  fullEnd = Math.max(input.clipEnd, ...final.map((n) => n.startTime + n.duration), 1);
+  const r = compute();
+  fullEnd = Math.max(input.clipEnd, ...r.final.map((n) => n.startTime + n.duration), 1);
   const { t0, t1 } = span();
-  const showArrows = tab === "strum" && params.mode === "guitar";
-  const top = showArrows ? 22 : 8;
-
+  const top = BAR_STRIP + ARROW_STRIP;
+  const notesBottom = hgt - VEL_H - 8;
   // Fold: one row per pitch that is used, like Live's Fold.
   const pitches = [...new Set(notes.map((n) => n.pitch))].sort((a, b) => b - a);
-  const row = new Map(pitches.map((p, k) => [p, k]));
-  const rowH = Math.min(18, (hgt - top - 6) / pitches.length);
-  const noteH = Math.max(2, rowH - 2);
-  const x = (t: number) => PAD + ((t - t0) / (t1 - t0)) * (w - PAD * 2);
-  const y = (p: number) => top + row.get(p)! * rowH;
-  const pxPerBeat = (w - PAD * 2) / (t1 - t0);
+  const rowH = Math.min(22, (notesBottom - top) / pitches.length);
+  geo = { w, h: hgt, top, notesBottom, rowH, noteH: Math.max(2, rowH - 2), rows: new Map(pitches.map((p, k) => [p, k])) };
+  const x = xOf;
+  const y = yOf;
+  const noteH = geo.noteH;
+  const pxPerBeat = plotW() / (t1 - t0);
   const targeted = (i: number) => r.target[r.analysis.groupOf[i]!];
+  const anySelected = selected.some(Boolean);
+
+  // note names
+  c.font = `10px ${font}`;
+  c.fillStyle = color("--text-dim");
+  c.textBaseline = "middle";
+  if (rowH >= 9) for (const p of pitches) c.fillText(noteName(p), 4, y(p) + noteH / 2);
+  c.fillText("vel", 4, notesBottom + 8 + VEL_H / 2);
+  c.textBaseline = "alphabetic";
 
   c.save();
   c.beginPath();
-  c.rect(PAD - 2, 0, w - PAD * 2 + 4, hgt);
+  c.rect(LABEL_W - 2, 0, w - LABEL_W - PAD + 4, hgt);
   c.clip();
 
-  // grid: bars always, beats once there is room
+  // grid: bars always (numbered), beats once there is room
   c.lineWidth = 1;
   const beatStep = pxPerBeat >= 24 ? 1 : 4;
   for (let b = Math.floor(t0 / beatStep) * beatStep; b <= t1; b += beatStep) {
+    const gx = Math.round(x(b)) + 0.5;
     c.strokeStyle = color("--line");
     c.globalAlpha = b % 4 === 0 ? 1 : 0.5;
     c.beginPath();
-    c.moveTo(Math.round(x(b)) + 0.5, top - 4);
-    c.lineTo(Math.round(x(b)) + 0.5, hgt);
+    c.moveTo(gx, BAR_STRIP - 2);
+    c.lineTo(gx, hgt);
     c.stroke();
+    if (b % 4 === 0) {
+      c.globalAlpha = 1;
+      c.fillStyle = color("--text-dim");
+      c.font = `10px ${font}`;
+      c.fillText(String(b / 4 + 1), gx + 3, 11);
+    }
   }
+  // velocity lane separator
+  c.globalAlpha = 1;
+  c.strokeStyle = color("--line");
+  c.beginPath();
+  c.moveTo(LABEL_W, notesBottom + 4.5);
+  c.lineTo(w - PAD, notesBottom + 4.5);
+  c.stroke();
 
   // originals: faint outline
   c.globalAlpha = 0.6;
@@ -483,13 +694,31 @@ function draw() {
     return Math.abs(a.startTime - b.startTime) > 1e-6 || Math.abs(a.duration - b.duration) > 1e-6 || a.velocity !== b.velocity;
   };
   const tabStages: Record<Tab, Stage[]> = { groove: ["groove"], humanize: ["humanize"], strum: ["strum", "pedal"], connect: [] };
-  final.forEach((n, i) => {
-    if (r.dropped.has(i)) return;
+  const fillOf = (i: number) => {
+    const o = overrides.notes[noteKey(notes[i]!)];
+    if (o?.lock) return { fill: color("--text-dim"), alpha: 0.7 };
     const hit = targeted(i) && tabStages[tab].some((st) => changedBy(st, i));
-    c.globalAlpha = !targeted(i) ? 0.25 : hit ? 0.95 : 0.55;
-    c.fillStyle = hit ? color(STAGE_COLOR[tab]) : color("--text");
-    roundRect(c, x(n.startTime) + 0.5, y(n.pitch) + 0.5, Math.max(2, x(n.startTime + n.duration) - x(n.startTime) - 1), noteH);
+    return { fill: hit ? color(STAGE_COLOR[tab]) : color("--text"), alpha: !targeted(i) ? 0.25 : hit ? 0.95 : 0.55 };
+  };
+  r.final.forEach((n, i) => {
+    if (r.dropped.has(i)) return;
+    const { fill, alpha } = fillOf(i);
+    const nx = x(n.startTime) + 0.5;
+    const nw = Math.max(2, x(n.startTime + n.duration) - x(n.startTime) - 1);
+    c.globalAlpha = alpha;
+    c.fillStyle = fill;
+    roundRect(c, nx, y(n.pitch) + 0.5, nw, noteH);
     c.fill();
+    const o = overrides.notes[noteKey(notes[i]!)];
+    if (selected[i] || o?.dt || o?.dv) {
+      c.globalAlpha = 1;
+      c.lineWidth = selected[i] ? 1.5 : 1;
+      c.strokeStyle = selected[i] ? color("--text") : color(STAGE_COLOR[tab]);
+      c.setLineDash(selected[i] ? [] : [2, 2]);
+      roundRect(c, nx - 1, y(n.pitch) - 0.5, nw + 2, noteH + 2);
+      c.stroke();
+      c.setLineDash([]);
+    }
   });
 
   // how far the open tab's stage moved each note: a line from the previous start
@@ -498,12 +727,12 @@ function draw() {
     c.globalAlpha = 0.9;
     c.strokeStyle = color(STAGE_COLOR[tab]);
     c.lineWidth = 2;
-    notes.forEach((_, i) => {
-      if (!targeted(i) || r.dropped.has(i)) return;
+    notes.forEach((n, i) => {
+      if (!targeted(i) || r.dropped.has(i) || overrides.notes[noteKey(n)]?.lock) return;
       const from = x(before[activeStage][i]!.startTime);
       const to = x(r.snapshots[activeStage][i]!.startTime);
       if (Math.abs(to - from) < 1.5) return;
-      const py = y(notes[i]!.pitch) + noteH / 2 + 0.5;
+      const py = y(n.pitch) + noteH / 2 + 0.5;
       c.beginPath();
       c.moveTo(from, py);
       c.lineTo(to, py);
@@ -511,53 +740,73 @@ function draw() {
     });
   }
 
-  // stroke arrows on the strum tab: click to cycle auto → down → up → auto
+  // velocity lane: final velocity bars, original as a tick
+  const laneTop = notesBottom + 8;
+  r.final.forEach((n, i) => {
+    if (r.dropped.has(i)) return;
+    const { fill, alpha } = fillOf(i);
+    const bx = Math.round(x(n.startTime)) + 0.5;
+    const vh = ((n.velocity ?? 100) / 127) * (VEL_H - 4);
+    c.globalAlpha = anySelected && !selected[i] ? alpha * 0.5 : alpha;
+    c.strokeStyle = fill;
+    c.lineWidth = 2;
+    c.beginPath();
+    c.moveTo(bx, laneTop + VEL_H - 2);
+    c.lineTo(bx, laneTop + VEL_H - 2 - vh);
+    c.stroke();
+    c.globalAlpha = 0.6;
+    c.fillStyle = color("--text-dim");
+    c.fillRect(bx - 2, laneTop + VEL_H - 2 - ((notes[i]!.velocity ?? 100) / 127) * (VEL_H - 4), 4, 1);
+  });
+
+  // stroke arrows on the strum tab
   chordHits = [];
-  if (showArrows) {
-    const p = { ...params.strum, forced };
+  if (tab === "strum" && params.mode === "guitar") {
+    const p = { ...params.strum, chords: overrides.chords };
     const motion = resolveMotion(r.analysis, p);
     let lastX = -Infinity;
     for (const g of r.analysis.groups) {
       if (g.idx.length < 2) continue;
       const px = Math.round(x(g.start)) + 4.5;
-      if (px - lastX < 14 || px < PAD - 4 || px > w - PAD + 4) continue; // too crowded or off screen: zoom in
+      if (px - lastX < 14 || px < LABEL_W - 4 || px > w - PAD + 4) continue; // too crowded or off screen: zoom in
       lastX = px;
       const key = chordKey(g.start);
+      const fixed = !!overrides.chords[key]?.direction;
       const down = strumDirection(g, motion, p) === "down";
       c.globalAlpha = 1;
-      c.strokeStyle = forced[key] ? color("--stage-strum") : color("--text-dim");
-      c.lineWidth = forced[key] ? 1.75 : 1.25;
-      const [tip, tail] = down ? [16, 5] : [5, 16];
+      c.strokeStyle = fixed ? color("--stage-strum") : color("--text-dim");
+      c.lineWidth = fixed ? 1.75 : 1.25;
+      const a0 = BAR_STRIP + 2;
+      const [tipY, tailY] = down ? [a0 + 13, a0 + 2] : [a0 + 2, a0 + 13];
       const dir = down ? -1 : 1;
       c.beginPath();
-      c.moveTo(px, tail);
-      c.lineTo(px, tip);
-      c.moveTo(px - 3.5, tip + 3.5 * dir);
-      c.lineTo(px, tip);
-      c.lineTo(px + 3.5, tip + 3.5 * dir);
+      c.moveTo(px, tailY);
+      c.lineTo(px, tipY);
+      c.moveTo(px - 3.5, tipY + 3.5 * dir);
+      c.lineTo(px, tipY);
+      c.lineTo(px + 3.5, tipY + 3.5 * dir);
       c.stroke();
       chordHits.push({ x: px, key });
     }
   }
 
-  // drift curve on the humanize tab
+  // drift curve on the humanize tab, on a fixed ±50 ms axis so it grows with the amount
   if (tab === "humanize" && r.drift.length > 1) {
-    // Fixed ±50 ms axis so the curve grows with the drift amount instead of always filling the box.
     const RANGE_MS = 50;
-    const mid = top + (hgt - top) / 2;
-    const scale = ((hgt - top) / 2 - 8) / RANGE_MS;
+    const mid = top + (notesBottom - top) / 2;
+    const scale = ((notesBottom - top) / 2 - 6) / RANGE_MS;
     c.globalAlpha = 0.5;
     c.strokeStyle = color("--line");
     c.fillStyle = color("--text-dim");
-    c.font = `10px ${color("--font")}`;
+    c.font = `10px ${font}`;
     for (const ms of [-RANGE_MS, 0, RANGE_MS]) {
       const py = mid - ms * scale;
       c.setLineDash(ms === 0 ? [3, 3] : [1, 4]);
       c.beginPath();
-      c.moveTo(PAD, py);
+      c.moveTo(LABEL_W, py);
       c.lineTo(w - PAD, py);
       c.stroke();
-      if (ms) c.fillText(`${ms > 0 ? "+" : ""}${ms} ms`, PAD + 2, py - 3);
+      if (ms) c.fillText(`${ms > 0 ? "+" : ""}${ms} ms`, LABEL_W + 2, py - 3);
     }
     c.setLineDash([]);
     c.globalAlpha = 0.9;
@@ -565,32 +814,141 @@ function draw() {
     c.lineWidth = 1.5;
     c.beginPath();
     r.analysis.groups.forEach((g, gi) => {
-      const px = x(g.start);
       const py = mid - Math.max(-RANGE_MS, Math.min(RANGE_MS, r.drift[gi]!)) * scale;
-      gi ? c.lineTo(px, py) : c.moveTo(px, py);
+      gi ? c.lineTo(x(g.start), py) : c.moveTo(x(g.start), py);
     });
     c.stroke();
   }
+
+  // marquee
+  if (drag?.kind === "marquee") {
+    c.globalAlpha = 0.12;
+    c.fillStyle = color("--text");
+    c.fillRect(Math.min(drag.x0, drag.x1), Math.min(drag.y0, drag.y1), Math.abs(drag.x1 - drag.x0), Math.abs(drag.y1 - drag.y0));
+    c.globalAlpha = 0.6;
+    c.strokeStyle = color("--text");
+    c.lineWidth = 1;
+    c.strokeRect(Math.min(drag.x0, drag.x1) + 0.5, Math.min(drag.y0, drag.y1) + 0.5, Math.abs(drag.x1 - drag.x0), Math.abs(drag.y1 - drag.y0));
+  }
   c.restore();
 
-  // zoom hint
   if (view) {
     c.globalAlpha = 1;
     c.fillStyle = color("--text-dim");
-    c.font = `11px ${color("--font")}`;
+    c.font = `10px ${font}`;
     c.textAlign = "right";
-    c.fillText(`${(t1 - t0).toFixed(1)} beats · ${ja ? "ダブルクリックで全体" : "double-click: whole clip"}`, w - PAD, hgt - 6);
+    c.fillText(`${(t1 - t0).toFixed(1)} beats · ${ja ? "空いた所をダブルクリックで全体" : "double-click empty space: whole clip"}`, w - PAD, 11);
     c.textAlign = "start";
   }
   c.globalAlpha = 1;
 }
 
-// ---------------------------------------------------------------- wiring
+// ---------------------------------------------------------------- selection bar
 
-const selected = input.notes.filter((n) => n.selected).length;
-$("count").textContent = selected
-  ? ja ? `${selected} ノートを選択中` : `${selected} notes selected`
-  : ja ? `${input.notes.length} ノート（クリップ全体）` : `${input.notes.length} notes (whole clip)`;
+/** Edits for the selected chords: lock, stroke speed, up skip, reset. */
+function renderSelbar() {
+  const bar = $("selbar");
+  const idx = selected.flatMap((s, i) => (s ? [i] : []));
+  const count = $("count");
+  count.textContent = idx.length
+    ? ja ? `${idx.length} ノートを選択中` : `${idx.length} notes selected`
+    : ja ? `${input.notes.length} ノート（クリップ全体）` : `${input.notes.length} notes (whole clip)`;
+  if (!idx.length || !last) {
+    bar.replaceChildren(
+      h("span", { className: "hint" }, ja
+        ? "ドラッグで選択 · クリックで和音を選択 · ⌥ドラッグでずらす · 下の vel をドラッグで強さ · ⌘スクロール/ピンチで拡大"
+        : "drag to select · click a chord · ⌥-drag to nudge · drag in vel for velocity · ⌘-scroll / pinch to zoom"),
+    );
+    return;
+  }
+  const groups = [...new Set(idx.map((i) => last!.analysis.groupOf[i]!))].map((gi) => last!.analysis.groups[gi]!);
+  const keys = groups.filter((g) => g.idx.length >= 2).map((g) => chordKey(g.start));
+  const locked = idx.every((i) => overrides.notes[noteKey(input.notes[i]!)]?.lock);
+  const guitar = params.mode === "guitar";
+
+  const setChords = (patch: (cur: LooseChord) => LooseChord) => {
+    const chords = { ...overrides.chords };
+    for (const k of keys) {
+      const next = cleanChord(patch({ ...chords[k] }));
+      if (Object.keys(next).length) chords[k] = next;
+      else delete chords[k];
+    }
+    overrides = { ...overrides, chords };
+    renderSelbar();
+    renderParams();
+    edited();
+  };
+
+  /** Draggable number bound to a chord override; double-click goes back to the global value. */
+  const chordNumber = (label: string, field: "speed" | "upSkip", fallback: number, max: number, unit: string) => {
+    const first = keys.map((k) => overrides.chords[k]?.[field]).find((v) => v !== undefined);
+    const value = h("span", { className: `num${first === undefined ? " inherited" : ""}` }, `${first ?? fallback}${unit}`);
+    value.title = ja ? "上下ドラッグで変更、ダブルクリックで全体の設定に戻す" : "drag up / down; double-click: back to the global value";
+    value.addEventListener("pointerdown", (e) => {
+      e.preventDefault();
+      value.setPointerCapture(e.pointerId);
+      const y0 = e.clientY;
+      const v0 = first ?? fallback;
+      const move = (m: PointerEvent) => {
+        const v = Math.max(0, Math.min(max, Math.round(v0 + ((y0 - m.clientY) * max) / 150)));
+        value.textContent = `${v}${unit}`;
+        value.classList.remove("inherited");
+        const chords = { ...overrides.chords };
+        for (const k of keys) chords[k] = { ...chords[k], [field]: v };
+        overrides = { ...overrides, chords };
+        edited();
+      };
+      value.addEventListener("pointermove", move);
+      value.addEventListener("pointerup", () => (value.removeEventListener("pointermove", move), renderSelbar(), renderParams()), { once: true });
+    });
+    value.addEventListener("dblclick", () => setChords((c) => ({ ...c, [field]: undefined })));
+    return h("span", { className: `field${guitar && keys.length ? "" : " disabled"}` }, h("span", { className: "label" }, label), value);
+  };
+
+  bar.replaceChildren(
+    h("span", { className: "label" }, ja ? `${groups.length} 和音` : `${groups.length} chord${groups.length > 1 ? "s" : ""}`),
+    h("button", {
+      onclick: () => {
+        for (const i of groups.flatMap((g) => g.idx)) setNoteOverride(i, { lock: !locked });
+        renderSelbar();
+        renderParams();
+        edited();
+      },
+    }, locked ? "Unlock" : "Lock"),
+    h("span", { className: "sep" }),
+    h("span", { className: `field${guitar && keys.length ? "" : " disabled"}` },
+      h("span", { className: "label" }, "stroke"),
+      segmented(
+        [["auto", "auto"], ["down", "↓"], ["up", "↑"]],
+        () => {
+          const dirs = keys.map((k) => overrides.chords[k]?.direction ?? "auto");
+          return dirs.every((d) => d === dirs[0]) ? dirs[0] : "mixed";
+        },
+        (v) => setChords((c) => ({ ...c, direction: v === "auto" ? undefined : (v as "down" | "up") })),
+        !(guitar && keys.length),
+      ),
+    ),
+    chordNumber("speed", "speed", params.strum.downSpeed, 120, "ms"),
+    chordNumber("up skip", "upSkip", params.strum.upSkip, 3, ""),
+    h("span", { className: "spacer" }),
+    h("button", {
+      onclick: () => {
+        const noteKeys = new Set(groups.flatMap((g) => g.idx).map((i) => noteKey(input.notes[i]!)));
+        overrides = {
+          chords: Object.fromEntries(Object.entries(overrides.chords).filter(([k]) => !keys.includes(k))),
+          notes: Object.fromEntries(Object.entries(overrides.notes).filter(([k]) => !noteKeys.has(k))),
+        };
+        renderSelbar();
+        renderParams();
+        edited();
+      },
+      title: ja ? "選んだ和音の手での変更をすべて解除" : "Drop hand edits on the selected chords",
+    }, "Reset"),
+    h("button", { onclick: () => ((selected = selected.map(() => false)), renderSelbar(), schedule()) }, "Deselect"),
+  );
+}
+
+// ---------------------------------------------------------------- wiring
 
 $("prev").onclick = () => loadPreset(presetIndex < 0 ? allPresets().length - 1 : presetIndex - 1);
 $("next").onclick = () => loadPreset(presetIndex + 1);
@@ -622,12 +980,13 @@ $("reseed").onclick = () => {
   renderSeed();
   schedule();
 };
+const applyOut = (): DialogOutput => ({ apply: { params, seed, overrides, selected }, ...presetsOut() });
 $("cancel").onclick = () => close(presetsOut());
-$("apply").onclick = () => close({ apply: { params, seed, forced }, ...presetsOut() });
+$("apply").onclick = () => close(applyOut());
 document.addEventListener("keydown", (e) => {
   if ((e.target as HTMLElement).tagName === "INPUT") return;
   if (e.key === "Escape") close(presetsOut());
-  if (e.key === "Enter") close({ apply: { params, seed, forced }, ...presetsOut() });
+  if (e.key === "Enter") close(applyOut());
 });
 new ResizeObserver(schedule).observe(canvas);
 
@@ -636,4 +995,6 @@ renderTabs();
 renderParams();
 renderPresetName();
 renderSeed();
+compute();
+renderSelbar();
 schedule();

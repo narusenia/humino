@@ -45,7 +45,7 @@ input { -webkit-user-select: text; user-select: text; }
 
 body {
   display: grid;
-  grid-template-rows: 48px 188px 36px 1fr 48px;
+  grid-template-rows: 48px 340px 40px 36px 1fr 48px;
 }
 
 button {
@@ -170,3 +170,31 @@ details.advanced summary { cursor: pointer; color: var(--text-dim); font-size: 1
 /* Controls inside the parameter area take the open tab's stage colour. */
 .params .segmented button[aria-checked="true"] { background: var(--section, var(--accent)); }
 .params button:focus-visible { outline-color: var(--section, var(--accent)); }
+
+/* Selection bar under the preview */
+.selbar { display: flex; align-items: center; gap: 14px; padding: 0 16px; border-bottom: 1px solid var(--line); min-width: 0; }
+.selbar .hint { font-size: 11px; color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.selbar button { padding: 3px 10px; font-size: 12px; }
+.selbar .field { display: inline-flex; align-items: center; gap: 6px; }
+.selbar .field.disabled { opacity: 0.35; pointer-events: none; }
+.selbar .num { font-size: 15px; font-weight: 300; cursor: ns-resize; color: var(--stage-strum); min-width: 40px; }
+.selbar .num.inherited { color: var(--text-dim); }
+.selbar .sep { width: 1px; height: 18px; background: var(--line); }
+.selbar .spacer { flex: 1; }
+
+/* Hover details */
+.tip {
+  position: fixed;
+  z-index: 3;
+  pointer-events: none;
+  padding: 6px 8px;
+  font-size: 11px;
+  line-height: 1.5;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  white-space: nowrap;
+}
+.tip[hidden] { display: none; }
+.preview { cursor: crosshair; }
+.selbar .segmented button[aria-checked="true"] { background: var(--stage-strum); }
