@@ -7,7 +7,7 @@
     "build": "tsx build.ts --production",
     "build:dev": "tsx build.ts",
     "start": "tsx build.ts && ableton-extensions-cli run",
-    "package": "npm run build && ableton-extensions-cli package -o dist/humino.ablx"
+    "package": "npm run build && ableton-extensions-cli package -o dist/humino.ablx -i assets/fonts/OFL.txt"
   },
   "dependencies": {
     "@ableton-extensions/sdk": "file:../../sdk/ableton-extensions-sdk-1.0.0-beta.1.tgz"
