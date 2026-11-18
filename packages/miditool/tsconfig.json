@@ -1,0 +1,19 @@
+{
+  "compilerOptions": {
+    "module": "nodenext",
+    "target": "esnext",
+    "moduleResolution": "nodenext",
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "moduleDetection": "force",
+    "noEmit": true,
+    "skipLibCheck": true,
+    "lib": ["esnext"],
+    "types": ["node"],
+    "paths": {
+      "@humino/core": ["../core/src/index.ts"]
+    }
+  },
+  "include": ["src/**/*", "build.ts"]
+}

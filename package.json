@@ -2,7 +2,7 @@
   "name": "humino",
   "private": true,
   "type": "module",
-  "workspaces": ["packages/core"],
+  "workspaces": ["packages/core", "packages/miditool"],
   "engines": {
     "node": ">=24.16.0"
   }

@@ -41,6 +41,16 @@ description = "Build humino.ablx for distribution"
 dir = "packages/extension"
 run = "npm run package"
 
+[tasks."miditool:build"]
+description = "Build the MIDI Tools device (packages/miditool/dist/humino.amxd)"
+dir = "packages/miditool"
+run = ["npx tsc --noEmit", "npm run build"]
+
+[tasks."miditool:install"]
+description = "Copy humino.amxd into Live's User Library (MIDI Tools > Max Transformations)"
+depends = ["miditool:build"]
+run = "cp packages/miditool/dist/humino.amxd \"$HOME/Music/Ableton/User Library/MIDI Tools/Max Transformations/\""
+
 [tasks."hooks:install"]
 description = "Install lefthook git hooks"
 run = "lefthook install"

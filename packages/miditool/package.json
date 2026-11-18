@@ -1,0 +1,15 @@
+{
+  "name": "@humino/miditool",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "build": "tsx build.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^24.19.2",
+    "esbuild": "0.28.1",
+    "tsx": "^4.19.0",
+    "typescript": "^5.9.3"
+  }
+}
