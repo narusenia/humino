@@ -20,7 +20,8 @@ export type DialogInput = {
 
 /** What the dialog sends back with `close_and_send`. */
 export type DialogOutput = {
-  apply?: { params: Params; seed: number };
+  /** `forced` is the dialog's view of the fixed stroke directions (the Clear button may have emptied it). */
+  apply?: { params: Params; seed: number; forced: Record<string, Direction> };
   /** Present when the user saved or deleted presets. */
   presets?: Preset[];
 };

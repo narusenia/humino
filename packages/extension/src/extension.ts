@@ -40,7 +40,10 @@ export function activate(activation: ActivationContext) {
           language: context.environment.language ?? "EN",
         });
         if (chosen.presets) store.savePresets(chosen.presets);
-        if (chosen.apply) applyToClip(clip, s, chosen.apply.params, chosen.apply.seed, store, transaction);
+        if (chosen.apply) {
+          const { params, seed, forced } = chosen.apply;
+          applyToClip(clip, { ...s, forced }, params, seed, store, transaction);
+        }
       },
     ],
     [

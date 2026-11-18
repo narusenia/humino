@@ -3,12 +3,16 @@
 import {
   analyze,
   BUILTIN_PRESETS,
+  chordKey,
+  resolveMotion,
+  strumDirection,
   DEFAULT_PARAMS,
   defaultGrooveVelocity,
   process,
   type Mode,
   type Params,
   type Preset,
+  type Note,
   type Stage,
 } from "@humino/core";
 import type { DialogInput, DialogOutput } from "../src/dialog.js";
@@ -40,6 +44,8 @@ let tab: Tab = "humanize";
 let userPresets: Preset[] = clone(input.presets);
 let presetsChanged = false;
 let presetIndex = -1;
+/** Stroke directions fixed by Strum Down / Up; Clear empties it. */
+let forced = { ...input.forced };
 const allPresets = () => [...BUILTIN_PRESETS, ...userPresets];
 const triplet = analyze(input.notes).triplet;
 
@@ -287,7 +293,16 @@ function renderParams() {
   const main = $("params");
   if (tab === "groove") main.replaceChildren(grooveTable());
   else if (tab === "humanize") main.replaceChildren(...group(HUMANIZE));
-  else main.replaceChildren(...group(STRUM));
+  else main.replaceChildren(...group(STRUM), fixedRow());
+}
+
+/** Shows how many chords Strum Down / Up fixed, with a way to release them. */
+function fixedRow() {
+  const n = Object.keys(forced).length;
+  const text = ja ? `向きを固定した和音：${n}` : `fixed chords: ${n}`;
+  const clear = h("button", { disabled: n === 0, onclick: () => ((forced = {}), renderParams(), edited()) }, "Clear");
+  clear.title = ja ? "Strum Down / Up で固定した向きを解除して自動に戻す" : "Release directions fixed by Strum Down / Up";
+  return h("div", { className: "fixed" }, h("span", { className: "label" }, text), clear);
 }
 
 function renderMode() {
@@ -331,6 +346,22 @@ function renderSeed() {
 // ---------------------------------------------------------------- preview
 
 const canvas = $<HTMLCanvasElement>("preview");
+let chordHits: { x: number; key: string }[] = [];
+canvas.addEventListener("click", (e) => {
+  const px = e.clientX - canvas.getBoundingClientRect().left;
+  const hit = chordHits.reduce<{ x: number; key: string } | undefined>(
+    (best, c) => (Math.abs(c.x - px) <= 8 && (!best || Math.abs(c.x - px) < Math.abs(best.x - px)) ? c : best),
+    undefined,
+  );
+  if (!hit) return;
+  const next = { undefined: "down", down: "up", up: undefined } as const;
+  const to = next[String(forced[hit.key]) as keyof typeof next];
+  forced = { ...forced };
+  if (to) forced[hit.key] = to;
+  else delete forced[hit.key];
+  renderParams(); // refresh the fixed-chords count
+  edited();
+});
 let pending = false;
 function schedule() {
   if (pending) return;
@@ -360,7 +391,7 @@ function draw() {
     return;
   }
 
-  const r = process(notes, { ...params, strum: { ...params.strum, forced: input.forced } }, { tempo: input.tempo, seed, clipEnd: input.clipEnd });
+  const r = process(notes, { ...params, strum: { ...params.strum, forced } }, { tempo: input.tempo, seed, clipEnd: input.clipEnd });
   const final = r.snapshots.pedal;
   const pad = 16;
   const t1 = Math.max(input.clipEnd, ...final.map((n) => n.startTime + n.duration), 1);
@@ -385,11 +416,19 @@ function draw() {
   c.strokeStyle = color("--muted");
   for (const n of notes) c.strokeRect(x(n.startTime) + 0.5, y(n.pitch) + 0.5, Math.max(2, x(n.startTime + n.duration) - x(n.startTime)), Math.max(2, rowH - 1));
 
-  // results
+  // results: notes the open tab's stage changed (start, length or velocity) take its colour
+  const before: Record<Stage, Note[]> = { groove: notes, humanize: r.snapshots.groove, strum: r.snapshots.humanize, pedal: r.snapshots.strum };
+  const changedBy = (stage: Stage, i: number) => {
+    const a = before[stage][i]!;
+    const b = r.snapshots[stage][i]!;
+    return Math.abs(a.startTime - b.startTime) > 1e-6 || Math.abs(a.duration - b.duration) > 1e-6 || a.velocity !== b.velocity;
+  };
+  const tabStages: Record<Tab, Stage[]> = { groove: ["groove"], humanize: ["humanize"], strum: ["strum", "pedal"], connect: [] };
   final.forEach((n, i) => {
     if (r.dropped.has(i)) return;
-    c.globalAlpha = targeted(i) ? 0.85 : 0.25;
-    c.fillStyle = color("--text");
+    const hit = targeted(i) && tabStages[tab].some((st) => changedBy(st, i));
+    c.globalAlpha = !targeted(i) ? 0.25 : hit ? 0.95 : 0.6;
+    c.fillStyle = hit ? color(STAGE_COLOR[tab]) : color("--text");
     c.fillRect(x(n.startTime), y(n.pitch), Math.max(2, x(n.startTime + n.duration) - x(n.startTime)), Math.max(2, rowH - 1));
   });
 
@@ -408,7 +447,7 @@ function draw() {
       if (Math.abs(x(to) - x(from)) >= 0.5) {
         c.globalAlpha = stage === activeStage ? 1 : 0.35;
         c.strokeStyle = color(v);
-        c.lineWidth = 2;
+        c.lineWidth = 3;
         c.beginPath();
         c.moveTo(x(from), y(n.pitch) - 1);
         c.lineTo(x(to), y(n.pitch) - 1);
@@ -417,6 +456,25 @@ function draw() {
       from = to;
     }
   });
+
+  // stroke arrows on the strum tab: click to cycle auto → down → up → auto
+  chordHits = [];
+  if (tab === "strum" && params.mode === "guitar") {
+    const p = { ...params.strum, forced };
+    const motion = resolveMotion(r.analysis, p);
+    c.font = `12px ${color("--font")}`;
+    c.textAlign = "center";
+    for (const g of r.analysis.groups) {
+      if (g.idx.length < 2) continue;
+      const key = chordKey(g.start);
+      const px = x(g.start);
+      c.globalAlpha = 1;
+      c.fillStyle = forced[key] ? color("--stage-strum") : color("--text-dim");
+      c.fillText(strumDirection(g, motion, p) === "down" ? "↓" : "↑", px + 4, 11);
+      chordHits.push({ x: px + 4, key });
+    }
+    c.textAlign = "start";
+  }
 
   // drift curve on the humanize tab
   if (tab === "humanize" && r.drift.length > 1) {
@@ -482,11 +540,11 @@ $("reseed").onclick = () => {
   schedule();
 };
 $("cancel").onclick = () => close(presetsOut());
-$("apply").onclick = () => close({ apply: { params, seed }, ...presetsOut() });
+$("apply").onclick = () => close({ apply: { params, seed, forced }, ...presetsOut() });
 document.addEventListener("keydown", (e) => {
   if ((e.target as HTMLElement).tagName === "INPUT") return;
   if (e.key === "Escape") close(presetsOut());
-  if (e.key === "Enter") close({ apply: { params, seed }, ...presetsOut() });
+  if (e.key === "Enter") close({ apply: { params, seed, forced }, ...presetsOut() });
 });
 new ResizeObserver(schedule).observe(canvas);
 

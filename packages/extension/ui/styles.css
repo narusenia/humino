@@ -162,3 +162,7 @@ details.advanced summary { cursor: pointer; color: var(--text-dim); font-size: 1
 .footer .spacer { flex: 1; }
 .count { display: flex; align-items: center; gap: 8px; color: var(--text-dim); }
 .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
+
+.fixed { display: flex; align-items: center; gap: 10px; margin-top: 14px; }
+.fixed button { padding: 3px 10px; font-size: 12px; }
+.fixed button:disabled { opacity: 0.35; cursor: default; }
