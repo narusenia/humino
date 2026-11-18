@@ -4,15 +4,17 @@
 // writes params through the same get / set. The 16-step groove table does not
 // fit the 152 × 147 panel and stays in the Extension.
 
-import { DEFAULT_CONNECT, DEFAULT_GROOVE, DEFAULT_HUMANIZE, DEFAULT_PARAMS, DEFAULT_STRUM, type Params } from "@humino/core";
+import { DEFAULT_CONNECT, DEFAULT_GROOVE, DEFAULT_HUMANIZE, DEFAULT_PARAMS, DEFAULT_STRUM, type Mode, type Params } from "@humino/core";
 
-export const PAGES = ["Hum", "Feel", "Str", "Con"];
+export const PAGES = ["Hum", "Feel", "Str", "Run", "Grc"];
 
-/** `tip` is shown in Live's Info View when the pointer is over the control. */
-type Base = { key: string; label: string; tip: string; page: number; x: number; y: number; get: (p: Params) => number; set: (p: Params, v: number) => void };
+/** `tip` is shown in Live's Info View when the pointer is over the control; `mode` greys it out in the other mode. */
+type Base = { key: string; label: string; tip: string; mode?: Mode; page: number; x: number; y: number; get: (p: Params) => number; set: (p: Params, v: number) => void };
 export type Control =
   | (Base & { kind: "dial"; max: number; unit: number })
-  | (Base & { kind: "tab"; options: string[]; w: number; /** live.menu (a drop-down) instead of live.tab. */ menu?: boolean });
+  | (Base & { kind: "tab"; options: string[]; w: number; /** live.menu (a drop-down) instead of live.tab. */ menu?: boolean })
+  /** live.text button that lights when on; shows `label`. */
+  | (Base & { kind: "toggle"; w: number });
 
 const UNIT = { int: 0, ms: 2, pct: 5 };
 // Header row (page + mode) is y 2-17; two dial rows with a gap so a value never
@@ -29,6 +31,10 @@ const tab = <T>(key: string, label: string, tip: string, page: number, [x, w, y 
   kind: "tab", key, label, tip, page, x, y, w, options: names, ...(menu && { menu }),
   get: (p) => Math.max(0, values.indexOf(get(p))),
   set: (p, i) => set(p, values[i] ?? values[0]!),
+});
+
+const toggle = (key: string, label: string, tip: string, page: number, [x, w]: [number, number], get: (p: Params) => boolean, set: (p: Params, v: boolean) => void): Control => ({
+  kind: "toggle", key, label, tip, page, x, y: TAB_Y, w, get: (p) => (get(p) ? 1 : 0), set: (p, v) => set(p, v > 0),
 });
 
 export const CONTROLS: Control[] = [
@@ -56,18 +62,29 @@ export const CONTROLS: Control[] = [
   tab("direction", "Direction", "Follow the strumming hand (Auto) or downstrokes only.", 2, [4, 44], ["auto", "down"] as const, ["Auto", "Dn"], (p) => p.strum.direction, (p, v) => (p.strum.direction = v)),
   tab("motion", "Motion", "How fast the hand moves: Auto, 8th or 16th notes.", 2, [52, 50], ["auto", 8, 16] as const, ["A", "8", "16"], (p) => p.strum.motion, (p, v) => (p.strum.motion = v)),
   tab("anchor", "Anchor", "Which string lands on the grid: the first or the middle one.", 2, [106, 42], ["first", "center"] as const, ["1st", "Ctr"], (p) => p.strum.anchor, (p, v) => (p.strum.anchor = v)),
-  // Connect
-  dial("chromatic", "Chromatic", "Chance of a semitone run into the next bass note.", 3, 0, 100, UNIT.pct, (p) => p.connect.chromatic, (p, v) => (p.connect.chromatic = v)),
+  // Run: chromatic run and passing tone, both leading from one bass note to the next
+  dial("chromatic", "Run %", "Chance of a semitone run into the next bass note.", 3, 0, 100, UNIT.pct, (p) => p.connect.chromatic, (p, v) => (p.connect.chromatic = v)),
   dial("steps", "Run Steps", "Run notes, 16ths each. Fewer when there is no room.", 3, 1, 6, UNIT.int, (p) => p.connect.steps, (p, v) => (p.connect.steps = Math.max(1, Math.round(v)))),
-  dial("passing", "Passing", "Chance of a scale tone between two bass notes. Needs Scale Mode.", 3, 2, 100, UNIT.pct, (p) => p.connect.passing, (p, v) => (p.connect.passing = v)),
-  dial("grace", "Grace", "Chance of a grace note just before the top note.", 3, 3, 100, UNIT.pct, (p) => p.connect.grace, (p, v) => (p.connect.grace = v)),
-  dial("gracesteps", "Gr Steps", "Grace notes climbing into the top note. Fewer when there is no room.", 3, 4, 6, UNIT.int, (p) => p.connect.graceSteps, (p, v) => (p.connect.graceSteps = Math.max(1, Math.round(v)))),
-  dial("cvel", "Velocity", "Velocity of the added notes, as a % of the bass note they leave or the top note they lead into.", 3, 5, 100, UNIT.pct, (p) => p.connect.velocity, (p, v) => (p.connect.velocity = v)),
-  tab("connect", "Connect", "Adds notes that lead from one chord to the next. Off by default.", 3, [4, 30], [false, true] as const, ["Off", "On"], (p) => p.connect.on, (p, v) => (p.connect.on = v)),
-  tab("rundir", "Run From", "Side the run comes from: Auto follows the previous bass note, Up climbs from below, Down comes from above.", 3, [37, 36, TAB_Y, true], ["auto", "up", "down"] as const, ["Auto", "Up", "Down"], (p) => p.connect.runDirection, (p, v) => (p.connect.runDirection = v)),
-  tab("gracelen", "Grace Len", "Length of each grace note: 1/64, 1/32 or 1/16 of a beat.", 3, [76, 34, TAB_Y, true], [1 / 64, 1 / 32, 1 / 16] as const, ["1/64", "1/32", "1/16"], (p) => p.connect.graceLength, (p, v) => (p.connect.graceLength = v)),
-  tab("gracescale", "Grace Scale", "In: grace notes step through Live's scale. Out: by semitones, leaving the scale.", 3, [113, 35, TAB_Y, true], ["in", "out"] as const, ["In", "Out"], (p) => p.connect.graceScale, (p, v) => (p.connect.graceScale = v)),
+  dial("runvel", "Run Vel", "Velocity of run notes, as a % of the bass note they leave.", 3, 2, 100, UNIT.pct, (p) => p.connect.chromaticVelocity, (p, v) => (p.connect.chromaticVelocity = v)),
+  dial("passing", "Pass %", "Chance of a scale tone between two bass notes, when no run was added. Needs Scale Mode.", 3, 3, 100, UNIT.pct, (p) => p.connect.passing, (p, v) => (p.connect.passing = v)),
+  dial("passvel", "Pass Vel", "Velocity of passing tones, as a % of the bass note they leave.", 3, 4, 100, UNIT.pct, (p) => p.connect.passingVelocity, (p, v) => (p.connect.passingVelocity = v)),
+  toggle("runon", "Run", "Turns chromatic runs on.", 3, [4, 44], (p) => p.connect.chromaticOn, (p, v) => (p.connect.chromaticOn = v)),
+  tab("rundir", "Run From", "Side the run comes from: Auto follows the previous bass note, Up climbs from below, Down comes from above.", 3, [52, 44, TAB_Y, true], ["auto", "up", "down"] as const, ["Auto", "Up", "Down"], (p) => p.connect.runDirection, (p, v) => (p.connect.runDirection = v)),
+  toggle("passon", "Passing", "Turns passing tones on.", 3, [100, 48], (p) => p.connect.passingOn, (p, v) => (p.connect.passingOn = v)),
+  // Grc: grace notes climbing into the top note
+  dial("grace", "Grace %", "Chance of grace notes before the top note.", 4, 0, 100, UNIT.pct, (p) => p.connect.grace, (p, v) => (p.connect.grace = v)),
+  dial("gracesteps", "Steps", "Grace notes climbing into the top note. Fewer when there is no room.", 4, 1, 6, UNIT.int, (p) => p.connect.graceSteps, (p, v) => (p.connect.graceSteps = Math.max(1, Math.round(v)))),
+  dial("gracevel", "Velocity", "Velocity of grace notes, as a % of the top note they lead into.", 4, 2, 100, UNIT.pct, (p) => p.connect.graceVelocity, (p, v) => (p.connect.graceVelocity = v)),
+  toggle("graceon", "Grace", "Turns grace notes on.", 4, [4, 44], (p) => p.connect.graceOn, (p, v) => (p.connect.graceOn = v)),
+  tab("gracelen", "Grace Len", "Length of each grace note: 1/64, 1/32 or 1/16 of a beat.", 4, [52, 44, TAB_Y, true], [1 / 64, 1 / 32, 1 / 16] as const, ["1/64", "1/32", "1/16"], (p) => p.connect.graceLength, (p, v) => (p.connect.graceLength = v)),
+  tab("gracescale", "Grace Scale", "In: grace notes step through Live's scale. Out: by semitones, leaving the scale.", 4, [100, 48, TAB_Y, true], ["in", "out"] as const, ["In", "Out"], (p) => p.connect.graceScale, (p, v) => (p.connect.graceScale = v)),
 ];
+
+// Strum works in guitar mode only; spread and pedal in piano mode only.
+for (const c of CONTROLS) {
+  if (c.page === 2) c.mode = "guitar";
+  else if (c.key === "spread" || c.key === "pedal") c.mode = "piano";
+}
 
 // ---------------------------------------------------------------- devices
 
@@ -95,7 +112,7 @@ const neutral = (): Params => ({
   humanize: { ...DEFAULT_HUMANIZE, drift: 0, jitter: 0, spread: 0, velJitter: 0, chordBalance: 0, legato: 0, lengthJitter: 0 },
   strum: { ...DEFAULT_STRUM },
   pedal: "off",
-  connect: { ...DEFAULT_CONNECT, on: false },
+  connect: { ...DEFAULT_CONNECT },
 });
 const only = (f: (p: Params) => void) => () => {
   const p = neutral();
@@ -116,7 +133,13 @@ export const DEVICES: Device[] = [
   { id: "swing", file: "humino Swing", pageNames: ["Swing"], pages: [["swing", "grid"]], params: only((p) => (p.groove.swing = 33)) },
   { id: "strum", file: "humino Strum", pageNames: ["Strum"], pages: [keysOn(2)], params: only((p) => (p.mode = "guitar")) },
   { id: "pedal", file: "humino Pedal", pageNames: ["Pedal"], pages: [["pedal"]], place: { pedal: [4, 144, ROW[0]!] }, params: only((p) => (p.pedal = "chord")) },
-  { id: "connect", file: "humino Connect", pageNames: ["Connect"], pages: [keysOn(3)], params: only((p) => (p.connect.on = true)) },
+  {
+    id: "connect",
+    file: "humino Connect",
+    pageNames: ["Run", "Grace"],
+    pages: [keysOn(3), keysOn(4)],
+    params: only((p) => Object.assign(p.connect, { chromaticOn: true, passingOn: true, graceOn: true })),
+  },
 ];
 
 /** The device's controls with their page and position on its panel. */
@@ -130,7 +153,7 @@ export function layout(d: Device): Control[] {
         return { ...c, page, x: COL[k % 3]!, y: ROW[Math.floor(k / 3)]! };
       }
       const [x, w, y] = d.place?.[key] ?? [c.x, c.w, c.y];
-      return { ...c, page, x, w, y };
+      return { ...c, page, x, w, y } as Control;
     });
   });
 }

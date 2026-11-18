@@ -9,14 +9,14 @@ const params = (c: Partial<ConnectParams>): Params => ({
   ...DEFAULT_PARAMS,
   humanize: still,
   groove: { ...DEFAULT_PARAMS.groove, swing: 0, velocity: DEFAULT_PARAMS.groove.velocity.map(() => 0) },
-  connect: { ...DEFAULT_CONNECT, on: true, passing: 0, chromatic: 0, grace: 0, ...c },
+  connect: { ...DEFAULT_CONNECT, chromaticOn: true, passingOn: true, graceOn: true, passing: 0, chromatic: 0, grace: 0, ...c },
 });
 const bass = (...pitches: number[]): Note[] => pitches.map((pitch, i) => ({ pitch, startTime: i * 2, duration: 2, velocity: 100 }));
 const ctx = { tempo: 120, seed: 1, scale: C_MAJOR };
 
 describe("connect", () => {
   it("adds nothing when off, and keeps the other stages as they were", () => {
-    const off = process(bass(48, 55), params({ on: false, chromatic: 100 }), ctx);
+    const off = process(bass(48, 55), params({ chromaticOn: false, passingOn: false, graceOn: false, chromatic: 100 }), ctx);
     expect(off.added).toEqual([]);
     const on = process(bass(48, 55), params({ chromatic: 100 }), ctx);
     expect(on.snapshots.pedal).toEqual(off.snapshots.pedal);
@@ -28,7 +28,7 @@ describe("connect", () => {
     expect(up.added.map((n) => n.startTime)).toEqual([1.25, 1.5, 1.75]);
     expect(up.final[0]!.duration).toBe(1.25); // previous note trimmed, total length kept
     expect(up.added[0]!.velocity).toBe(80);
-    expect(process(bass(48, 55), params({ chromatic: 100, velocity: 50 }), ctx).added[0]!.velocity).toBe(50);
+    expect(process(bass(48, 55), params({ chromatic: 100, chromaticVelocity: 50 }), ctx).added[0]!.velocity).toBe(50);
     const down = process(bass(55, 48), params({ chromatic: 100, steps: 2 }), ctx);
     expect(down.added.map((n) => n.pitch)).toEqual([50, 49]);
   });
@@ -66,6 +66,11 @@ describe("connect", () => {
     const r = process(notes, params({ grace: 100, chromatic: 100 }), ctx);
     expect(r.added).toEqual([]);
     expect(r.final[2]!.duration).toBe(2);
+  });
+
+  it("switches each kind on its own", () => {
+    const passOnly = process(bass(48, 55), params({ chromaticOn: false, chromatic: 100, passing: 100, passingVelocity: 40 }), ctx).added;
+    expect(passOnly.map((n) => [n.pitch, n.velocity])).toEqual([[52, 40]]); // the run is off, so passing gets its roll
   });
 
   it("only connects targeted groups", () => {

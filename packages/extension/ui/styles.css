@@ -127,7 +127,12 @@ input {
 .tabs button:disabled { color: var(--muted); cursor: default; }
 
 /* Parameters */
-.params { padding: 14px 16px 10px; overflow-y: auto; }
+.params { padding: 14px 16px 10px; overflow-y: auto; scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
+/* thin, quiet scrollbars (WebKit on macOS, WebView2 on Windows) */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--line); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--muted); }
 .row { display: flex; flex-wrap: wrap; gap: 8px 22px; align-items: flex-start; }
 .section-title { font-size: 12px; color: var(--text-dim); margin: 14px 0 6px; }
 .param { width: 104px; display: flex; flex-direction: column; gap: 2px; }
@@ -166,8 +171,9 @@ details.advanced summary { cursor: pointer; color: var(--text-dim); font-size: 1
 .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
 
 .lane { display: flex; flex-wrap: wrap; gap: 8px 22px; align-items: flex-start; }
+.lane > .param:first-child { width: 104px; }
+.lane > .param:first-child .segmented button { flex: 1; }
 .lane + .lane { margin-top: 5px; padding-top: 5px; border-top: 1px solid var(--line); }
-.lane-name { width: 52px; padding-top: 2px; font-size: 12px; color: var(--text-dim); }
 .scale-name { margin-top: 8px; font-size: 15px; color: var(--text); white-space: nowrap; }
 .fixed { display: flex; align-items: center; gap: 10px; margin-top: 14px; }
 .fixed button { padding: 3px 10px; font-size: 12px; }

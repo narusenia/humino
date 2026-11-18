@@ -31,6 +31,7 @@ type Box = Record<string, unknown> & { id: string };
 function build(dev: Device) {
   const CONTROLS = layout(dev);
   const full = dev.id === "all";
+  const hasConnect = CONTROLS.some((c) => c.key === "runon");
   const boxes: Box[] = [];
   const lines: [string, number, string, number][] = [];
   let y = 10;
@@ -84,7 +85,7 @@ function build(dev: Device) {
   wire("code", 3, "thispatcher", 0);
 
   if (full) {
-  tabBox("mode", [104, 2, 44, 15], 640, 10, false, { ...enumParam("Mode", "Mode", ["Gtr", "Pno"], d.mode === "guitar" ? 0 : 1), ...info({ label: "Mode", tip: "Guitar turns on Strum, Piano turns on Pedal." }) });
+  tabBox("mode", [106, 2, 42, 15], 640, 10, false, { ...enumParam("Mode", "Mode", ["Gtr", "Pno"], d.mode === "guitar" ? 0 : 1), ...info({ label: "Mode", tip: "Guitar turns on Strum, Piano turns on Pedal." }) });
   obj("p-mode", "prepend mode", 1, 1, { patching_rect: [640, 34, 90, 22] });
   wire("mode", 0, "p-mode", 0);
   wire("p-mode", 0, "code", 0);
@@ -104,18 +105,18 @@ function build(dev: Device) {
   }
 
   if (dev.pages.length > 1) {
-    const tip = full ? "Hum: humanize. Feel: swing and pedal. Str: strum. Con: connect." : `Pages: ${dev.pageNames.join(", ")}.`;
-    tabBox("page", [4, 2, full ? 96 : 144, 15], 920, 10, false, { ...enumParam("Page", "Page", dev.pageNames, 0), ...info({ label: "Page", tip }) });
+    const tip = full ? "Hum: humanize. Feel: swing and pedal. Str: strum. Run: chromatic runs and passing tones. Grc: grace notes." : `Pages: ${dev.pageNames.join(", ")}.`;
+    tabBox("page", [4, 2, full || hasConnect ? 100 : 144, 15], 920, 10, false, { ...enumParam("Page", "Page", dev.pageNames, 0), ...info({ label: "Page", tip }) });
     obj("p-page", "prepend page", 1, 1, { patching_rect: [920, 34, 90, 22] });
     wire("page", 0, "p-page", 0);
     wire("p-page", 0, "code", 0);
   }
 
-  // Live's scale, filled in by humino.ts (Con page of the full device, top row of Connect)
-  if (CONTROLS.some((c) => c.key === "connect"))
+  // Live's scale, filled in by humino.ts (Run / Grc pages of the full device, always on Connect)
+  if (hasConnect)
     boxes.push({
-      id: "scale", maxclass: "live.comment", varname: "scale", text: full ? "Scale" : "Scale: –", numinlets: 1, numoutlets: 0, textjustification: full ? 2 : 0,
-      patching_rect: [1000, 10, 100, 18], presentation: 1, presentation_rect: full ? [100, 2, 48, 15] : [4, 2, 144, 15], ...(full && { hidden: 1 }),
+      id: "scale", maxclass: "live.comment", varname: "scale", text: "Scale", numinlets: 1, numoutlets: 0, textjustification: 2,
+      patching_rect: [1000, 10, 100, 18], presentation: 1, presentation_rect: [106, 2, 42, 15], ...(full && { hidden: 1 }),
       ...info({ label: "Scale", tip: "Live's current scale (Scale Mode). Passing tones and In grace notes use it." }),
     });
 
@@ -124,6 +125,12 @@ function build(dev: Device) {
     const py = 80 + Math.floor(k / 8) * 120;
     const hidden = c.page !== 0;
     if (c.kind === "tab") tabBox(c.key, [c.x, c.y, c.w, 15], px, py, hidden, { ...enumParam(c.label, c.label, c.options, c.get(d)), ...info(c) }, c.menu);
+    else if (c.kind === "toggle")
+      boxes.push({
+        id: c.key, maxclass: "live.text", varname: c.key, text: c.label, texton: c.label, mode: 1, numinlets: 1, numoutlets: 2, outlettype: ["", ""], parameter_enable: 1,
+        patching_rect: [px, py, c.w, 15], presentation: 1, presentation_rect: [c.x, c.y, c.w, 15], ...(hidden && { hidden: 1 }), ...info(c),
+        ...enumParam(c.label, c.label, ["off", "on"], c.get(d)),
+      });
     else
       boxes.push({
         id: c.key, maxclass: "live.dial", varname: c.key, numinlets: 1, numoutlets: 2, outlettype: ["", "float"], parameter_enable: 1,

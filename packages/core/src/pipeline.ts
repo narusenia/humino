@@ -96,7 +96,9 @@ export function process(notes: readonly Note[], p: Params, ctx: Context, ov: Ove
 
   applyGroove(work, a, target, p.groove);
   const groove = snap();
-  const drift = applyHumanize(work, a, target, p.humanize, ctx, stageRng(ctx.seed, 1));
+  // Strum re-spaces chord notes from the lowest one, so spread would only nudge whole chords in guitar mode.
+  const humanize_ = p.mode === "guitar" ? { ...p.humanize, spread: 0 } : p.humanize;
+  const drift = applyHumanize(work, a, target, humanize_, ctx, stageRng(ctx.seed, 1));
   const humanize = snap();
   const dropped =
     p.mode === "guitar"

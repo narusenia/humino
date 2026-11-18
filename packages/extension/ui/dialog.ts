@@ -95,7 +95,7 @@ type Def = NumDef | ChoiceDef;
 const HUMANIZE: Def[] = [
   { kind: "num", section: "humanize", key: "drift", label: "drift", min: 0, max: 40, step: 0.5, unit: "ms", tip: ["Slow timing wander that comes and goes", "ゆっくり走って戻るタイミングの揺れ"] },
   { kind: "num", section: "humanize", key: "jitter", label: "jitter", min: 0, max: 20, step: 0.5, unit: "ms", tip: ["Small per-note timing error", "ノートごとの細かいずれ"] },
-  { kind: "num", section: "humanize", key: "spread", label: "spread", min: 0, max: 20, step: 0.5, unit: "ms", tip: ["Offsets each note of a chord on its own; 0 moves the chord as one (piano)", "和音の音を1つずつずらす。0 で和音ごとそろって動く（ピアノ）"] },
+  { kind: "num", section: "humanize", key: "spread", label: "spread", min: 0, max: 20, step: 0.5, unit: "ms", mode: "piano", tip: ["Offsets each note of a chord on its own; 0 moves the chord as one (piano)", "和音の音を1つずつずらす。0 で和音ごとそろって動く（ピアノ）"] },
   { kind: "num", section: "humanize", key: "beatWeight", label: "beat weight", min: 0, max: 100, step: 1, unit: "%", tip: ["Keeps strong beats tighter than off-beats", "表拍を裏拍よりきっちり保つ"] },
   { kind: "num", section: "humanize", key: "velJitter", label: "vel ±", min: 0, max: 30, step: 1, tip: ["Random velocity change", "ベロシティのランダムな増減"] },
   { kind: "num", section: "humanize", key: "chordBalance", label: "chord bal", min: 0, max: 100, step: 1, unit: "%", tip: ["Louder top and bass, softer inner notes", "和音の最高音と最低音を強く、中の音を弱く"] },
@@ -117,18 +117,27 @@ const STRUM: Def[] = [
   { kind: "num", section: "strum", key: "overlap", label: "overlap", min: 0, max: 20, step: 1, unit: "ms", advanced: true, mode: "guitar", tip: ["How long a chord rings into the next one", "次の和音に重ねて残す時間"] },
 ];
 
-const CONNECT: Def[] = [
-  { kind: "choice", section: "connect", key: "on", label: "connect", options: [[false, "off"], [true, "on"]], tip: ["Add notes that lead from one chord to the next", "和音から次の和音へつなぐ音を足す"] },
-  { kind: "num", section: "connect", key: "chromatic", label: "chromatic", min: 0, max: 100, step: 1, unit: "%", tip: ["Chance of a semitone run into the next bass note", "次のベースへ半音ずつ近づく音を入れる確率"] },
-  { kind: "num", section: "connect", key: "steps", label: "run steps", min: 1, max: 6, step: 1, tip: ["Run notes, 16ths each; fewer when there is no room", "半音で近づく音の数（1 音 16 分）。間が足りなければ減らす"] },
-  { kind: "choice", section: "connect", key: "runDirection", label: "run from", options: [["auto", "auto"], ["up", "below"], ["down", "above"]], tip: ["Side the run comes from; auto follows the previous bass note", "どちらから近づくか。auto は前のベースの側から"] },
-  { kind: "num", section: "connect", key: "passing", label: "passing", min: 0, max: 100, step: 1, unit: "%", tip: ["Chance of a scale tone between two bass notes (needs Scale Mode)", "2 つのベースのあいだにスケール音を入れる確率（Scale Mode が必要）"] },
-  { kind: "num", section: "connect", key: "grace", label: "grace", min: 0, max: 100, step: 1, unit: "%", tip: ["Chance of a grace note just before the top note", "最高音の直前に前打音を入れる確率"] },
-  { kind: "num", section: "connect", key: "velocity", label: "velocity", min: 0, max: 100, step: 1, unit: "%", tip: ["Velocity of the added notes, as a % of the bass note they leave or the top note they lead into", "足した音のベロシティ。前のベース、または次の最高音に対する %"] },
-  { kind: "num", section: "connect", key: "graceSteps", label: "grace steps", min: 1, max: 6, step: 1, tip: ["Grace notes climbing into the top note; fewer when there is no room", "最高音へ上がっていく前打音の数。間が足りなければ減らす"] },
-  { kind: "choice", section: "connect", key: "graceScale", label: "grace notes", options: [["in", "in scale"], ["out", "chromatic"]], tip: ["Grace notes step through the scale, or by semitones outside it", "前打音をスケール音で上げるか、スケール外の半音も使うか"] },
-  { kind: "choice", section: "connect", key: "graceLength", label: "grace len", options: [[1 / 64, "1/64"], [1 / 32, "1/32"], [1 / 16, "1/16"]], tip: ["Grace note length in beats", "前打音の長さ（拍）"] },
+const onOff: [boolean, string][] = [
+  [false, "off"],
+  [true, "on"],
 ];
+const CONNECT: Def[] = [
+  { kind: "choice", section: "connect", key: "chromaticOn", label: "chromatic run", options: onOff, tip: ["Semitone steps into the next bass note", "次のベースへ半音ずつ近づく音を足す"] },
+  { kind: "num", section: "connect", key: "chromatic", label: "chance", min: 0, max: 100, step: 1, unit: "%", tip: ["Chance per chord change", "和音が変わるごとに入れる確率"] },
+  { kind: "num", section: "connect", key: "steps", label: "steps", min: 1, max: 6, step: 1, tip: ["Run notes, 16ths each; fewer when there is no room", "半音で近づく音の数（1 音 16 分）。間が足りなければ減らす"] },
+  { kind: "choice", section: "connect", key: "runDirection", label: "from", options: [["auto", "auto"], ["up", "below"], ["down", "above"]], tip: ["Side the run comes from; auto follows the previous bass note", "どちらから近づくか。auto は前のベースの側から"] },
+  { kind: "num", section: "connect", key: "chromaticVelocity", label: "velocity", min: 0, max: 100, step: 1, unit: "%", tip: ["Velocity as a % of the bass note the run leaves", "前のベースに対するベロシティの %"] },
+  { kind: "choice", section: "connect", key: "passingOn", label: "passing tone", options: onOff, tip: ["A scale tone between two bass notes (needs Scale Mode)", "2 つのベースのあいだにスケール音を足す（Scale Mode が必要）"] },
+  { kind: "num", section: "connect", key: "passing", label: "chance", min: 0, max: 100, step: 1, unit: "%", tip: ["Chance per chord change, when no run was added", "和音が変わるごとに入れる確率（Chromatic Run が入らなかったとき）"] },
+  { kind: "num", section: "connect", key: "passingVelocity", label: "velocity", min: 0, max: 100, step: 1, unit: "%", tip: ["Velocity as a % of the bass note it leaves", "前のベースに対するベロシティの %"] },
+  { kind: "choice", section: "connect", key: "graceOn", label: "grace notes", options: onOff, tip: ["Short notes climbing into the top note", "最高音の直前に短い音を足す"] },
+  { kind: "num", section: "connect", key: "grace", label: "chance", min: 0, max: 100, step: 1, unit: "%", tip: ["Chance per chord change", "和音が変わるごとに入れる確率"] },
+  { kind: "num", section: "connect", key: "graceSteps", label: "steps", min: 1, max: 6, step: 1, tip: ["Grace notes climbing into the top note; fewer when there is no room", "最高音へ上がっていく前打音の数。間が足りなければ減らす"] },
+  { kind: "choice", section: "connect", key: "graceLength", label: "length", options: [[1 / 64, "1/64"], [1 / 32, "1/32"], [1 / 16, "1/16"]], tip: ["Length of each grace note in beats", "前打音 1 音の長さ（拍）"] },
+  { kind: "choice", section: "connect", key: "graceScale", label: "notes", options: [["in", "in scale"], ["out", "chromatic"]], tip: ["Step through the scale, or by semitones outside it", "スケール音で上げるか、スケール外の半音も使うか"] },
+  { kind: "num", section: "connect", key: "graceVelocity", label: "velocity", min: 0, max: 100, step: 1, unit: "%", tip: ["Velocity as a % of the top note they lead into", "次の最高音に対するベロシティの %"] },
+];
+
 
 const GROOVE: Def[] = [
   { kind: "num", section: "groove", key: "swing", label: "swing", min: 0, max: 75, step: 1, unit: "%", tip: ["Pushes off-beats later", "裏のステップを後ろへずらす"] },
@@ -320,10 +329,11 @@ function renderParams() {
   else main.replaceChildren(...group(STRUM), fixedRow());
 }
 
-/** Connect in three lanes: switch and shared settings, the bass approach, the grace notes. */
+/** Connect in three lanes, one per kind: chromatic run, passing tone, grace notes. */
 function connectLanes() {
   const pick = (...keys: string[]) => keys.map((k) => control(CONNECT.find((c) => c.key === k)!));
-  const lane = (name: string, ...items: HTMLElement[]) => h("div", { className: "lane" }, h("span", { className: "lane-name" }, name), ...items);
+  // the first control of each lane is its on / off, labelled with the kind
+  const lane = (...items: HTMLElement[]) => h("div", { className: "lane" }, ...items);
   const s = input.scale;
   const scale = h(
     "div",
@@ -332,9 +342,9 @@ function connectLanes() {
     h("span", { className: "scale-name" }, s ? `${NAMES[s.root % 12]} ${s.name ?? ""}`.trim() : ja ? "Scale Mode オフ" : "Scale Mode off"),
   );
   return [
-    lane("", ...pick("on", "velocity"), scale),
-    lane(ja ? "ベース" : "bass", ...pick("chromatic", "steps", "runDirection", "passing")),
-    lane(ja ? "前打音" : "grace", ...pick("grace", "graceSteps", "graceLength", "graceScale")),
+    lane(...pick("chromaticOn", "chromatic", "steps", "runDirection", "chromaticVelocity")),
+    lane(...pick("passingOn", "passing", "passingVelocity"), scale),
+    lane(...pick("graceOn", "grace", "graceSteps", "graceLength", "graceScale", "graceVelocity")),
   ];
 }
 

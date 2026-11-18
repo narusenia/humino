@@ -64,12 +64,13 @@ const scale = (input: ToolInput): Scale | undefined => {
 };
 
 const NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
-/** Shows the scale on the panel; the full device has 48 px, so long names shrink ("Harmonic Minor" → "HarM"). */
+const hasConnect = CONTROLS.some((c) => c.key === "runon");
+/** Shows the scale in the header's 42 px, so long names shrink ("Harmonic Minor" → "HarM"). */
 function showScale(s: Scale | undefined) {
-  if (!CONTROLS.some((c) => c.key === "connect")) return;
-  let text = s ? `${NAMES[s.root % 12]} ${s.name ?? ""}`.trim() : "No scale";
-  if (full && text.length > 8 && s?.name) text = `${NAMES[s.root % 12]} ${s.name.split(" ").map((w, i) => (i ? w[0] : w.slice(0, 3))).join("")}`;
-  outlet(3, "script", "send", "scale", "set", full ? text : `Scale: ${text}`);
+  if (!hasConnect) return;
+  let text = s ? `${NAMES[s.root % 12]} ${s.name ?? ""}`.trim() : "No scl";
+  if (text.length > 7 && s?.name) text = `${NAMES[s.root % 12]} ${s.name.split(" ").map((w, i) => (i ? w[0] : w.slice(0, 3))).join("")}`;
+  outlet(3, "script", "send", "scale", "set", text);
 }
 
 const toCore = (n: ToolNote): Note => ({
@@ -105,6 +106,11 @@ g.msg_dictionary = (input: ToolInput) => {
   outlet_dictionary(0, { notes: [...out, ...added] });
 };
 
+/** Greys out the controls the current mode does not use. */
+function syncActive() {
+  for (const c of CONTROLS) if (c.mode) outlet(3, "script", "send", c.key, "active", c.mode === params.mode ? 1 : 0);
+}
+
 /** Re-run the transform with the current settings (Auto-like). */
 function changed() {
   if (Date.now() - loadedAt < 1000) return;
@@ -120,6 +126,7 @@ function showAll() {
 // Messages from the device's controls ([prepend ...] → this).
 g.mode = (i: number) => {
   params.mode = (["guitar", "piano"] as Mode[])[i] ?? "piano";
+  syncActive();
   changed();
 };
 g.preset = (i: number) => {
@@ -130,6 +137,7 @@ g.preset = (i: number) => {
   params.mode = p.mode === "any" ? mode : p.mode;
   params.connect = connect; // presets have no Connect settings of their own
   showAll();
+  syncActive();
   changed();
 };
 /** [prepend param <key>] from every dial and tab in CONTROLS. */
@@ -144,9 +152,10 @@ g.page = (i: number) => {
   for (const c of CONTROLS) outlet(3, "script", c.page === i ? "show" : "hide", c.key);
   if (full) {
     outlet(3, "script", i === 0 ? "show" : "hide", "preset");
-    // Connect does not depend on the mode, so its page shows the scale in the mode's place.
-    outlet(3, "script", i === 3 ? "hide" : "show", "mode");
-    outlet(3, "script", i === 3 ? "show" : "hide", "scale");
+    // Connect does not depend on the mode, so its pages show the scale in the mode's place.
+    outlet(3, "script", i >= 3 ? "hide" : "show", "mode");
+    outlet(3, "script", i >= 3 ? "show" : "hide", "scale");
   }
-  if (i === 3 || !full) showScale(scale({}));
+  if (i >= 3 || !full) showScale(scale({}));
+  syncActive();
 };

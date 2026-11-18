@@ -8,17 +8,26 @@ type Rng = ReturnType<typeof createRng>;
 
 export type RunDirection = "auto" | "up" | "down";
 
+/** Each kind has its own switch (off by default, so settings saved before v2 never gain notes) and velocity. */
 export type ConnectParams = {
-  /** Off by default so settings saved before v2 never gain notes. */
-  on: boolean;
-  /** 0..100 %, scale tone between two bass notes. */
-  passing: number;
-  /** 0..100 %, semitone run into the next bass note (rolled before passing). */
+  /** Semitone run into the next bass note (rolled before passing). */
+  chromaticOn: boolean;
+  /** 0..100 % chance. */
   chromatic: number;
   /** 1..6 run notes. */
   steps: number;
   runDirection: RunDirection;
-  /** 0..100 %, grace note before the top note. */
+  /** 0..100 % of the bass note the run leaves. */
+  chromaticVelocity: number;
+  /** Scale tone between two bass notes. */
+  passingOn: boolean;
+  /** 0..100 % chance. */
+  passing: number;
+  /** 0..100 % of the bass note it leaves. */
+  passingVelocity: number;
+  /** Grace notes before the top note. */
+  graceOn: boolean;
+  /** 0..100 % chance. */
   grace: number;
   /** Beats per grace note, 1/64..1/16. */
   graceLength: number;
@@ -26,21 +35,25 @@ export type ConnectParams = {
   graceSteps: number;
   /** "in": grace notes step through the scale; "out": by semitones, leaving the scale. */
   graceScale: "in" | "out";
-  /** 0..100 %, velocity of the added notes against the note they lead from (bass) or into (grace). */
-  velocity: number;
+  /** 0..100 % of the top note they lead into. */
+  graceVelocity: number;
 };
 
 export const DEFAULT_CONNECT: ConnectParams = {
-  on: false,
-  passing: 30,
+  chromaticOn: false,
   chromatic: 30,
   steps: 2,
   runDirection: "auto",
+  chromaticVelocity: 80,
+  passingOn: false,
+  passing: 30,
+  passingVelocity: 80,
+  graceOn: false,
   grace: 20,
   graceLength: 1 / 32,
   graceSteps: 1,
   graceScale: "in",
-  velocity: 80,
+  graceVelocity: 80,
 };
 
 /** Live's current scale; absent when Scale Mode is off. */
@@ -86,7 +99,7 @@ export function applyConnect(
   rng: Rng,
 ): Note[] {
   const added: Note[] = [];
-  if (!p.on) return added;
+  if (!p.chromaticOn && !p.passingOn && !p.graceOn) return added;
   for (let gi = 1; gi < a.groups.length; gi++) {
     // drawn for every pair so a partial apply matches a full one
     const [rRun, rPass, rGrace] = [rng.next(), rng.next(), rng.next()];
@@ -105,18 +118,20 @@ export function applyConnect(
     if (gap >= MIN_GAP) {
       const room = Math.floor(gap / 2 / STEP + 1e-9);
       let pitches: number[] = [];
-      if (rRun < p.chromatic / 100) {
+      let pct = p.chromaticVelocity;
+      if (p.chromaticOn && rRun < p.chromatic / 100) {
         const dir = p.runDirection === "auto" ? (pb.pitch > nb.pitch ? "down" : "up") : p.runDirection;
         const n = Math.max(1, Math.min(Math.round(p.steps), room));
         pitches = Array.from({ length: n }, (_, k) => nb.pitch + (dir === "up" ? -(n - k) : n - k));
-      } else if (scale && rPass < p.passing / 100) {
+      } else if (p.passingOn && scale && rPass < p.passing / 100) {
+        pct = p.passingVelocity;
         const t = passingTone(pb.pitch, nb.pitch, scale);
         if (t !== undefined) pitches = [t];
       }
       if (pitches.length) {
         const start = nb.startTime - pitches.length * STEP;
         trimTo(pb, start);
-        const velocity = clampVelocity(((pb.velocity ?? DEFAULT_VELOCITY) * p.velocity) / 100);
+        const velocity = clampVelocity(((pb.velocity ?? DEFAULT_VELOCITY) * pct) / 100);
         pitches.forEach((pitch, k) => added.push({ pitch, startTime: start + k * STEP, duration: STEP, velocity }));
         bassAdded = true;
       }
@@ -126,7 +141,7 @@ export function applyConnect(
     const pt = work[prev[prev.length - 1]!]!;
     const nt = work[next[next.length - 1]!]!;
     const topGap = nt.startTime - pt.startTime;
-    if (rGrace < p.grace / 100 && !(bassAdded && next.length === 1) && topGap >= MIN_GAP) {
+    if (p.graceOn && rGrace < p.grace / 100 && !(bassAdded && next.length === 1) && topGap >= MIN_GAP) {
       // as many as fit in half the gap, climbing a scale step (or semitone) at a time
       const n = Math.max(1, Math.min(Math.round(p.graceSteps), Math.floor(topGap / 2 / p.graceLength + 1e-9)));
       const gs = p.graceScale === "in" ? scale : undefined;
@@ -134,7 +149,7 @@ export function applyConnect(
       while (pitches.length < n) pitches.unshift(below(pitches[0]!, gs));
       const start = nt.startTime - n * p.graceLength;
       trimTo(pt, start);
-      const velocity = clampVelocity(((nt.velocity ?? DEFAULT_VELOCITY) * p.velocity) / 100);
+      const velocity = clampVelocity(((nt.velocity ?? DEFAULT_VELOCITY) * p.graceVelocity) / 100);
       pitches.forEach((pitch, k) => added.push({ pitch, startTime: start + k * p.graceLength, duration: p.graceLength, velocity }));
     }
   }
