@@ -718,11 +718,32 @@ function draw() {
   const targeted = (i: number) => r.target[r.analysis.groupOf[i]!];
   const anySelected = selected.some(Boolean);
 
-  // note names
+  // keyboard: one key per folded row, white / black like Live's piano roll; names where they fit (always on C)
+  c.globalAlpha = 1;
+  c.font = `${Math.min(10, Math.max(8, rowH - 3))}px ${font}`;
+  c.textBaseline = "middle";
+  for (const p of pitches) {
+    const black = [1, 3, 6, 8, 10].includes(p % 12);
+    const ky = y(p);
+    c.fillStyle = black ? color("--bg") : color("--text");
+    c.globalAlpha = black ? 1 : 0.8;
+    roundRect(c, 2, ky, LABEL_W - 6, Math.max(1, rowH - 1));
+    c.fill();
+    if (black) {
+      c.globalAlpha = 1;
+      c.strokeStyle = color("--muted");
+      c.lineWidth = 1;
+      c.stroke();
+    }
+    if (rowH >= 9 || (p % 12 === 0 && rowH >= 6)) {
+      c.globalAlpha = 1;
+      c.fillStyle = black ? color("--text-dim") : color("--bg");
+      c.fillText(noteName(p), 5, ky + rowH / 2);
+    }
+  }
+  c.globalAlpha = 1;
   c.font = `10px ${font}`;
   c.fillStyle = color("--text-dim");
-  c.textBaseline = "middle";
-  if (rowH >= 9) for (const p of pitches) c.fillText(noteName(p), 4, y(p) + noteH / 2);
   c.fillText("vel", 4, notesBottom + 8 + VEL_H / 2);
   c.textBaseline = "alphabetic";
 
