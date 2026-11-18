@@ -704,9 +704,12 @@ function draw() {
     const hit = targeted(i) && tabStages[tab].some((st) => changedBy(st, i));
     return { fill: hit ? color(STAGE_COLOR[tab]) : color("--text"), alpha: !targeted(i) ? 0.25 : hit ? 0.95 : 0.55 };
   };
+  /** Live-style: louder notes are drawn more opaque. */
+  const velAlpha = (n: Note) => 0.35 + 0.65 * ((n.velocity ?? 100) / 127);
   r.final.forEach((n, i) => {
     if (r.dropped.has(i)) return;
-    const { fill, alpha } = fillOf(i);
+    const { fill, alpha: base } = fillOf(i);
+    const alpha = base * velAlpha(n);
     const nx = x(n.startTime) + 0.5;
     const nw = Math.max(2, x(n.startTime + n.duration) - x(n.startTime) - 1);
     c.globalAlpha = alpha;
@@ -748,11 +751,11 @@ function draw() {
   const laneTop = notesBottom + 8;
   r.final.forEach((n, i) => {
     if (r.dropped.has(i)) return;
-    const { fill, alpha } = fillOf(i);
     const bx = Math.round(x(n.startTime)) + 0.5;
     const vh = ((n.velocity ?? 100) / 127) * (VEL_H - 4);
+    const alpha = (targeted(i) ? 1 : 0.4) * velAlpha(n);
     c.globalAlpha = anySelected && !selected[i] ? alpha * 0.5 : alpha;
-    c.strokeStyle = fill;
+    c.strokeStyle = color("--velocity");
     c.lineWidth = 2;
     c.beginPath();
     c.moveTo(bx, laneTop + VEL_H - 2);

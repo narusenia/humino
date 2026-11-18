@@ -19,6 +19,7 @@
   --stage-humanize: #e8a55a;
   --stage-strum: #8fb98a;
   --stage-connect: #7fa7d9;
+  --velocity: #c4c8d0; /* velocity lane bars */
 
   --font: "Allo", system-ui, sans-serif;
   font-family: var(--font);
