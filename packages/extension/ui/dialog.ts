@@ -316,8 +316,9 @@ function fixedRow() {
 }
 
 function renderMode() {
+  // Keep the whole group: segmented() repaints its own buttons on click.
   $("mode").replaceChildren(
-    ...segmented(
+    segmented(
       [
         ["guitar", "Guitar"],
         ["piano", "Piano"],
@@ -328,7 +329,7 @@ function renderMode() {
         renderParams();
         edited();
       },
-    ).childNodes,
+    ),
   );
 }
 
@@ -1031,8 +1032,67 @@ $("reseed").onclick = () => {
 const applyOut = (): DialogOutput => ({ apply: { params, seed, overrides, selected }, ...presetsOut() });
 $("cancel").onclick = () => close(presetsOut());
 $("apply").onclick = () => close(applyOut());
+// ---------------------------------------------------------------- undo / redo (dialog edits only)
+
+type Snapshot = string;
+const snapshot = (): Snapshot => JSON.stringify({ params, overrides, seed, presetIndex, isInit });
+let committed = snapshot();
+const history: Snapshot[] = [];
+let future: Snapshot[] = [];
+
+/** One pointer gesture (a drag, a click) = one undo step. */
+function commit() {
+  const now = snapshot();
+  if (now === committed) return;
+  history.push(committed);
+  if (history.length > 200) history.shift();
+  future = [];
+  committed = now;
+}
+// after click handlers have run
+document.addEventListener("pointerup", () => setTimeout(commit, 0), true);
+
+function restore(state: Snapshot) {
+  const s = JSON.parse(state) as { params: Params; overrides: Required<Overrides>; seed: number; presetIndex: number; isInit: boolean };
+  ({ params, overrides, seed, presetIndex, isInit } = s);
+  committed = state;
+  renderMode();
+  renderParams();
+  renderPresetName();
+  renderSeed();
+  renderSelbar();
+  schedule();
+}
+
+function undo() {
+  commit();
+  const prev = history.pop();
+  if (prev === undefined) return;
+  future.push(committed);
+  restore(prev);
+}
+
+function redo() {
+  commit();
+  const next = future.pop();
+  if (next === undefined) return;
+  history.push(committed);
+  restore(next);
+}
+
 document.addEventListener("keydown", (e) => {
   if ((e.target as HTMLElement).tagName === "INPUT") return;
+  const mod = e.metaKey || e.ctrlKey;
+  if (mod && e.key.toLowerCase() === "z") {
+    e.preventDefault();
+    e.shiftKey ? redo() : undo();
+    return;
+  }
+  if (mod && e.key.toLowerCase() === "y") {
+    e.preventDefault();
+    redo();
+    return;
+  }
   if (e.key === "Escape") close(presetsOut());
   if (e.key === "Enter") close(applyOut());
 });
