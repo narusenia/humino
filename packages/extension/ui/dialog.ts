@@ -141,6 +141,7 @@ function numControl(d: NumDef) {
     edited();
   };
   value.addEventListener("pointerdown", (e) => {
+    e.preventDefault(); // no text selection while dragging
     value.setPointerCapture(e.pointerId);
     const y0 = e.clientY;
     const v0 = b[d.key] as number;
@@ -227,6 +228,7 @@ function grooveTable() {
     const start = (e.target as HTMLElement).closest<HTMLElement>(".half");
     if (!start) return;
     const kind = start.dataset.kind as "timing" | "velocity";
+    e.preventDefault();
     steps.setPointerCapture(e.pointerId);
     const paint = (ev: PointerEvent) => {
       const cols = halves[kind];
