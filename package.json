@@ -1,0 +1,9 @@
+{
+  "name": "humino",
+  "private": true,
+  "type": "module",
+  "workspaces": ["packages/core"],
+  "engines": {
+    "node": ">=24.16.0"
+  }
+}

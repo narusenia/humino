@@ -1,0 +1,11 @@
+# Installed with `mise run hooks:install`. Jobs are filtered by glob so a
+# docs-only commit does not pay for the test run.
+pre-commit:
+  jobs:
+    - name: check
+      glob: "packages/core/**/*.ts"
+      run: mise run check
+commit-msg:
+  jobs:
+    - name: message-format
+      run: bash scripts/check-commit-msg.sh {1}

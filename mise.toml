@@ -1,0 +1,46 @@
+# `mise run check` is the canonical verification entry point; CI and the
+# lefthook pre-commit hook run the same task.
+
+[tools]
+node = "24"
+lefthook = "2.1.5"
+
+[tasks.install]
+description = "Install core dependencies (CI-safe, no Ableton SDK needed)"
+run = "npm install"
+
+[tasks."ext:install"]
+description = "Install extension dependencies (needs the Ableton SDK tarballs in sdk/)"
+dir = "packages/extension"
+run = "npm install"
+
+[tasks.typecheck]
+description = "Type-check packages/core"
+run = "npm run typecheck --workspace @humino/core"
+
+[tasks.test]
+description = "Run packages/core tests"
+run = "npm test --workspace @humino/core"
+
+[tasks.check]
+description = "Full verification of packages/core (typecheck + test)"
+depends = ["typecheck", "test"]
+
+[tasks."ext:check"]
+description = "Type-check and build packages/extension (local only, needs the SDK)"
+dir = "packages/extension"
+run = ["npx tsc --noEmit", "npm run build"]
+
+[tasks."ext:start"]
+description = "Build and launch the Extension Host (Live Developer Mode must be on)"
+dir = "packages/extension"
+run = "npm start"
+
+[tasks."ext:package"]
+description = "Build humino.ablx for distribution"
+dir = "packages/extension"
+run = "npm run package"
+
+[tasks."hooks:install"]
+description = "Install lefthook git hooks"
+run = "lefthook install"
