@@ -2,7 +2,7 @@
 
 import { describe, expect, it } from "vitest";
 import { analyze } from "../src/analysis.js";
-import { applyGroove, DEFAULT_GROOVE, defaultGrooveVelocity } from "../src/groove.js";
+import { applyGroove, DEFAULT_GROOVE, defaultGrooveVelocity, extractGroove } from "../src/groove.js";
 import type { Note } from "../src/types.js";
 
 const sixteenths = (): Note[] => Array.from({ length: 8 }, (_, i) => ({ pitch: 60, startTime: i * 0.25, duration: 0.25, velocity: 80 }));
@@ -35,5 +35,27 @@ describe("groove", () => {
     timing[1] = -20;
     const out = run(sixteenths(), { ...DEFAULT_GROOVE, timing });
     expect(out[1]!.startTime).toBeCloseTo(0.2);
+  });
+});
+
+describe("extractGroove", () => {
+  it("gets back the step table a straight clip was played with", () => {
+    const timing = [0, 12, -8, 20, 0, 10, -6, 18, 4, 12, -8, 20, 0, 10, -6, 18];
+    const velocity = [10, -6, 2, -10, 6, -6, 2, -10, 8, -6, 2, -10, 6, -6, 2, -10];
+    const straight: Note[] = Array.from({ length: 32 }, (_, i) => ({ pitch: 60, startTime: i * 0.25, duration: 0.25, velocity: 90 }));
+    const played = run(straight, { ...DEFAULT_GROOVE, timing, velocity, swing: 0 });
+    const g = extractGroove(played);
+    expect(g.triplet).toBe(false);
+    expect(g.timing).toEqual(timing);
+    // velocity comes back relative to the clip's average
+    const mean = velocity.reduce((a, b) => a + b, 0) / 16;
+    g.velocity.forEach((v, k) => expect(Math.abs(v - (velocity[k]! - mean))).toBeLessThanOrEqual(1));
+  });
+
+  it("leaves steps nothing was played on at 0", () => {
+    const quarters: Note[] = [0, 1, 2, 3].map((t) => ({ pitch: 60, startTime: t + 0.02, duration: 0.5, velocity: 80 }));
+    const g = extractGroove(quarters, 0.01);
+    expect(g.timing.filter((_, k) => k % 4 === 0)).toEqual([8, 8, 8, 8]);
+    expect(g.timing.filter((_, k) => k % 4 !== 0).every((v) => v === 0)).toBe(true);
   });
 });

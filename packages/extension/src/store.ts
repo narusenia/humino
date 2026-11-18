@@ -2,7 +2,7 @@
 
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { completeParams, type Direction, type Note, type Overrides, type Params, type Preset } from "@humino/core";
+import { completeParams, type Direction, type ExtractedGroove, type Note, type Overrides, type Params, type Preset } from "@humino/core";
 
 /** Original notes keyed by the hash of the notes humino wrote (ADR-0002). */
 export type OriginalEntry = {
@@ -14,6 +14,8 @@ export type OriginalEntry = {
   forced?: Record<string, Direction>;
 };
 export type Last = { params: Params; seed: number };
+/** The groove last taken with Extract Groove, and the clip it came from. */
+export type SavedGroove = ExtractedGroove & { clip: string };
 
 const MAX_ORIGINALS = 500;
 
@@ -57,6 +59,14 @@ export class Store {
 
   saveLast(last: Last) {
     this.write("last.json", last);
+  }
+
+  groove(): SavedGroove | undefined {
+    return this.read<SavedGroove | undefined>("groove.json", undefined);
+  }
+
+  saveGroove(groove: SavedGroove) {
+    this.write("groove.json", groove);
   }
 
   presets(): Preset[] {

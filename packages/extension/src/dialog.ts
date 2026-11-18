@@ -2,6 +2,7 @@
 
 import type { ExtensionContext } from "@ableton-extensions/sdk";
 import type { Note, Overrides, Params, Preset, Scale } from "@humino/core";
+import type { SavedGroove } from "./store.js";
 
 declare const __DIALOG_HTML__: string;
 
@@ -15,6 +16,8 @@ export type DialogInput = {
   scale?: Scale;
   params: Params;
   seed: number;
+  /** From the last Extract Groove, for the Groove tab's Load button. */
+  groove?: SavedGroove;
   /** User presets only; builtins come from core inside the dialog. */
   presets: Preset[];
   language: string;

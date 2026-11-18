@@ -303,8 +303,29 @@ function grooveTable() {
 
   for (let i = 0; i < 16; i++) (["timing", "velocity"] as const).forEach((k) => paintBar(k, i));
   const legend = h("div", { className: "steps-legend" }, h("span", {}, "timing"), h("span", {}, "velocity"));
-  const side = h("div", {}, ...group(GROOVE));
+  const side = h("div", {}, ...group(GROOVE), extractedRow());
   return h("div", { className: "groove" }, legend, steps, side);
+}
+
+/** Load the groove taken from another clip with "humino: Extract Groove". */
+function extractedRow() {
+  const x = input.groove;
+  if (!x)
+    return h("p", { className: "hint" }, ja
+      ? "別のクリップを右クリック →「humino: Extract Groove」で、そのクリップのノリをここに読み込めます"
+      : "Right-click another clip → \"humino: Extract Groove\" to load its feel here");
+  const load = h("button", {
+    onclick: () => {
+      params.groove = { ...params.groove, timing: [...x.timing], velocity: [...x.velocity] };
+      renderParams();
+      edited();
+    },
+  }, ja ? `「${x.clip}」の Groove を読み込む` : `Load groove from "${x.clip}"`);
+  load.title = ja
+    ? "抜き出したタイミングとベロシティでステップ表を置き換える。Swing はそのまま"
+    : "Replaces the step table with the extracted timing and velocity. Swing stays as it is";
+  const note = x.triplet !== triplet ? h("p", { className: "hint" }, ja ? "抜き出したクリップと 3 連かどうかが違います" : "That clip and this one differ in triplet feel") : null;
+  return h("div", { className: "extracted" }, load, ...(note ? [note] : []));
 }
 
 // ---------------------------------------------------------------- layout
