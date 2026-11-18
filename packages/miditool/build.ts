@@ -30,7 +30,7 @@ const obj = (id: string, text: string, numinlets: number, numoutlets: number, ex
 const wire = (from: string, outlet: number, to: string, inlet: number) => lines.push([from, outlet, to, inlet]);
 
 // --- core path: live.miditool.in → dict.join → v8.codebox → live.miditool.out
-obj("in", "live.miditool.in", 1, 2, { outlettype: ["dictionary", "dictionary"] });
+obj("in", "live.miditool.in", 1, 2);
 obj("join", "dict.join", 2, 1, { outlettype: ["dictionary"] });
 boxes.push({
   id: "code",
@@ -145,15 +145,60 @@ const patcher = {
     default_fontname: "Arial Bold",
     gridonopen: 1,
     gridsize: [8, 8],
+    gridsnaponopen: 1,
+    objectsnaponopen: 1,
+    statusbarvisible: 2,
+    toolbarvisible: 1,
+    bglocked: 0,
+    lefttoolbarpinned: 0,
+    toptoolbarpinned: 0,
+    righttoolbarpinned: 0,
+    bottomtoolbarpinned: 0,
+    toolbars_unpinned_last_save: 0,
+    tallnewobj: 0,
+    boxanimatetime: 500,
+    enablehscroll: 1,
+    enablevscroll: 1,
     devicewidth: 152,
     description: "humino: humanize, groove and strum for programmed guitar and piano",
+    digest: "",
+    tags: "",
+    style: "",
+    subpatcher_template: "",
+    assistshowspatchername: 0,
     boxes: boxes.map(({ id, ...rest }) => ({ box: { id, ...rest } })),
     lines: lines.map(([s, so, t, ti]) => ({ patchline: { source: [s, so], destination: [t, ti] } })),
     dependency_cache: [],
     latency: 0,
     is_mpe: 0,
-    // "natt": MIDI Transformation (same value Live's template uses)
-    project: { version: 1, amxdtype: 1851880564, readonly: 0, devpathtype: 0, devpath: ".", contents: { patchers: {} } },
+    minimum_live_version: "",
+    minimum_max_version: "",
+    platform_compatibility: 0,
+    autosave: 0,
+    saved_attribute_attributes: { default_plcolor: { expression: "" } },
+    // Max dereferences every project field on load (a missing searchpath crashes Live), so keep the full set.
+    // amxdtype "natt" = MIDI Transformation, the value Live's own template uses.
+    project: {
+      version: 1,
+      creationdate: 3590052493,
+      modificationdate: 3590052493,
+      viewrect: [25, 124, 300, 500],
+      autoorganize: 1,
+      hideprojectwindow: 1,
+      showdependencies: 1,
+      autolocalize: 0,
+      contents: { patchers: {} },
+      layout: {},
+      searchpath: {},
+      detailsvisible: 0,
+      amxdtype: 1851880564,
+      readonly: 0,
+      devpathtype: 0,
+      devpath: ".",
+      sortmode: 0,
+      viewmode: 0,
+      includepackages: 0,
+    },
   },
 };
 
