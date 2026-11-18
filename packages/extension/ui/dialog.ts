@@ -718,8 +718,7 @@ function draw() {
   const font = color("--font");
   c.clearRect(0, 0, w, hgt);
 
-  const notes = base;
-  if (!notes.length) {
+  if (!input.notes.length) {
     c.fillStyle = color("--text-dim");
     c.font = `13px ${font}`;
     c.fillText(ja ? "ノートがありません" : "no notes", 16, 24);
@@ -727,6 +726,7 @@ function draw() {
   }
 
   const r = compute();
+  const notes = base; // after compute(): it may re-voice
   fullEnd = Math.max(input.clipEnd, ...r.final.map((n) => n.startTime + n.duration), 1);
   const { t0, t1 } = span();
   const top = BAR_STRIP + CHORD_STRIP + ARROW_STRIP;
