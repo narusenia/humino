@@ -139,7 +139,7 @@ input {
 }
 .param .value .unit { font-size: 12px; font-weight: 350; color: var(--text-dim); margin-left: 2px; }
 .param .track { height: 3px; background: var(--line); border-radius: 2px; overflow: hidden; }
-.param .track > div { height: 100%; background: var(--accent); }
+.param .track > div { height: 100%; background: var(--section, var(--accent)); }
 .param.choice { width: auto; }
 .param.choice .segmented { margin-top: 6px; }
 
@@ -166,3 +166,7 @@ details.advanced summary { cursor: pointer; color: var(--text-dim); font-size: 1
 .fixed { display: flex; align-items: center; gap: 10px; margin-top: 14px; }
 .fixed button { padding: 3px 10px; font-size: 12px; }
 .fixed button:disabled { opacity: 0.35; cursor: default; }
+
+/* Controls inside the parameter area take the open tab's stage colour. */
+.params .segmented button[aria-checked="true"] { background: var(--section, var(--accent)); }
+.params button:focus-visible { outline-color: var(--section, var(--accent)); }
