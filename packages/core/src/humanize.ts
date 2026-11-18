@@ -9,7 +9,7 @@ type Rng = ReturnType<typeof createRng>;
 export type HumanizeParams = {
   /** ms, size of the slow drift (stationary standard deviation). */
   drift: number;
-  /** 0..1, how fast the drift returns to the grid (0 = constant offset, 1 = no memory). */
+  /** 0..1, how fast the drift returns to the grid (time constant 8.5 beats at 0, 0.5 beats at 1). */
   driftReturn: number;
   /** ms, per-chord jitter standard deviation. */
   jitter: number;
@@ -36,13 +36,25 @@ export const DEFAULT_HUMANIZE: HumanizeParams = {
   lengthJitter: 5,
 };
 
-/** Drift in ms per group: mean-reverting AR(1) over the whole clip (ADR-0005). */
+/** Beats the drift takes to fall back toward the grid (time constant). */
+export const driftTau = (driftReturn: number) => 0.5 + (1 - driftReturn) * 8;
+
+/**
+ * Drift in ms per group: a mean-reverting walk over time (Ornstein-Uhlenbeck,
+ * exact steps), so it wanders at the same pace however dense the notes are
+ * (ADR-0005).
+ */
 export function driftCurve(a: Analysis, p: HumanizeParams, rng: Rng): number[] {
-  const k = 1 - p.driftReturn;
-  const step = p.drift * Math.sqrt(1 - k * k);
+  const tau = driftTau(p.driftReturn);
   let x = p.drift * rng.gaussian();
-  return a.groups.map((_, gi) => {
-    if (gi > 0) x = k * x + step * rng.gaussian();
+  let prev = a.groups[0]?.start ?? 0;
+  return a.groups.map((g, gi) => {
+    const g0 = rng.gaussian(); // drawn for every group so partial applies match
+    if (gi > 0) {
+      const k = Math.exp(-(g.start - prev) / tau);
+      x = k * x + p.drift * Math.sqrt(1 - k * k) * g0;
+      prev = g.start;
+    }
     return x;
   });
 }

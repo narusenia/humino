@@ -2,7 +2,7 @@
 
 import { describe, expect, it } from "vitest";
 import { analyze, targetGroups } from "../src/analysis.js";
-import { applyHumanize, DEFAULT_HUMANIZE, type HumanizeParams } from "../src/humanize.js";
+import { applyHumanize, DEFAULT_HUMANIZE, driftCurve, type HumanizeParams } from "../src/humanize.js";
 import { createRng } from "../src/rng.js";
 import type { Note } from "../src/types.js";
 
@@ -64,5 +64,26 @@ describe("humanize", () => {
       { pitch: 60, startTime: 1, duration: 1 },
     ];
     expect(run(notes, zero)[0]!.duration).toBe(1);
+  });
+});
+
+describe("driftCurve", () => {
+  it("wanders at the same pace however dense the notes are", () => {
+    // same 8-beat span, 9 vs 65 groups: the change per beat must stay similar
+    const sparse = analyze(Array.from({ length: 9 }, (_, i) => ({ pitch: 60, startTime: i, duration: 0.25 })));
+    const dense = analyze(Array.from({ length: 65 }, (_, i) => ({ pitch: 60, startTime: i / 8, duration: 0.1 })));
+    const p = { ...DEFAULT_HUMANIZE, drift: 10 };
+    const meanStep = (xs: number[], every: number) => {
+      const picked = xs.filter((_, i) => i % every === 0);
+      return picked.slice(1).reduce((s, v, i) => s + Math.abs(v - picked[i]!), 0) / (picked.length - 1);
+    };
+    let s = 0;
+    let d = 0;
+    for (let seed = 0; seed < 200; seed++) {
+      s += meanStep(driftCurve(sparse, p, createRng(seed)), 1);
+      d += meanStep(driftCurve(dense, p, createRng(seed)), 8);
+    }
+    expect(d / s).toBeGreaterThan(0.8);
+    expect(d / s).toBeLessThan(1.25);
   });
 });
