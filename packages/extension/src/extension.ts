@@ -31,7 +31,7 @@ export function activate(activation: ActivationContext) {
         const last = store.last();
         const chosen = await openDialog(context, {
           notes: s.original,
-          forced: s.forced,
+          overrides: s.overrides,
           tempo: s.tempo,
           clipEnd: s.clipEnd,
           params: last?.params ?? DEFAULT_PARAMS,
@@ -41,8 +41,9 @@ export function activate(activation: ActivationContext) {
         });
         if (chosen.presets) store.savePresets(chosen.presets);
         if (chosen.apply) {
-          const { params, seed, forced } = chosen.apply;
-          applyToClip(clip, { ...s, forced }, params, seed, store, transaction);
+          const { params, seed, overrides, selected } = chosen.apply;
+          const original = s.original.map((n, i) => ({ ...n, selected: selected[i] ?? false }));
+          applyToClip(clip, { ...s, original, overrides }, params, seed, store, transaction);
         }
       },
     ],
@@ -61,7 +62,7 @@ export function activate(activation: ActivationContext) {
             const last = store.last();
             const params = { ...(last?.params ?? DEFAULT_PARAMS), mode: "guitar" as const };
             // keep the last seed so only the stroke direction changes
-            applyToClip(clip, { ...s, forced: forceDirection(s, dir) }, params, last?.seed ?? newSeed(), store, transaction);
+            applyToClip(clip, { ...s, overrides: forceDirection(s, dir) }, params, last?.seed ?? newSeed(), store, transaction);
           },
         ] as [string, string, (clip: MidiClip<"1.0.0">) => void],
     ),

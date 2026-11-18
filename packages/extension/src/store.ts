@@ -2,14 +2,16 @@
 
 import * as fs from "node:fs";
 import * as path from "node:path";
-import type { Direction, Note, Params, Preset } from "@humino/core";
+import type { Direction, Note, Overrides, Params, Preset } from "@humino/core";
 
 /** Original notes keyed by the hash of the notes humino wrote (ADR-0002). */
 export type OriginalEntry = {
   original: Note[];
   savedAt: number;
-  /** Strum Down / Up choices, keyed by chordKey of the original start. */
-  forced: Record<string, Direction>;
+  /** Hand edits for this clip (chord and note overrides). */
+  overrides?: Overrides;
+  /** Older entries: Strum Down / Up directions only. Read into `overrides`. */
+  forced?: Record<string, Direction>;
 };
 export type Last = { params: Params; seed: number };
 

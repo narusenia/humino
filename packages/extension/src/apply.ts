@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 import type { MidiClip, NoteDescription } from "@ableton-extensions/sdk";
-import { analyze, chordKey, hashNotes, process, targetGroups, type Direction, type Note, type Params } from "@humino/core";
+import { analyze, chordKey, hashNotes, process, targetGroups, type Direction, type Note, type Overrides, type Params } from "@humino/core";
 import type { Store } from "./store.js";
 
 export const newSeed = () => Math.floor(Math.random() * 1000);
@@ -10,7 +10,7 @@ export const newSeed = () => Math.floor(Math.random() * 1000);
 export type ClipState = {
   /** Notes to process: the stored original, with the clip's current selection mapped onto it. */
   original: Note[];
-  forced: Record<string, Direction>;
+  overrides: Overrides;
   tempo: number;
   clipEnd: number;
 };
@@ -42,21 +42,26 @@ export function readClip(clip: MidiClip<"1.0.0">, tempo: number, store: Store): 
   const entry = store.original(hashNotes(current));
   return {
     original: entry ? carrySelection(current, entry.original) : current.map((n) => ({ ...n })),
-    forced: entry?.forced ?? {},
+    overrides: entry?.overrides ?? fromForced(entry?.forced),
     tempo,
     clipEnd: clip.looping ? clip.loopEnd : clip.endMarker,
   };
 }
 
+const fromForced = (forced: Record<string, Direction> = {}): Overrides => ({
+  chords: Object.fromEntries(Object.entries(forced).map(([k, direction]) => [k, { direction }])),
+});
+
 /** Strum Down / Up: fix the direction of the targeted chords. */
-export function forceDirection(state: ClipState, dir: Direction): Record<string, Direction> {
+export function forceDirection(state: ClipState, dir: Direction): Overrides {
   const a = analyze(state.original);
   const target = targetGroups(state.original, a);
-  const forced = { ...state.forced };
+  const chords = { ...state.overrides.chords };
   a.groups.forEach((g, gi) => {
-    if (target[gi] && g.idx.length >= 2) forced[chordKey(g.start)] = dir;
+    const key = chordKey(g.start);
+    if (target[gi] && g.idx.length >= 2) chords[key] = { ...chords[key], direction: dir };
   });
-  return forced;
+  return { ...state.overrides, chords };
 }
 
 export function applyToClip(
@@ -67,19 +72,15 @@ export function applyToClip(
   store: Store,
   transaction: (fn: () => void) => void,
 ) {
-  const forced = state.forced;
-  const result = process(state.original, { ...params, strum: { ...params.strum, forced } }, {
-    tempo: state.tempo,
-    seed,
-    clipEnd: state.clipEnd,
-  });
+  const overrides = state.overrides;
+  const result = process(state.original, params, { tempo: state.tempo, seed, clipEnd: state.clipEnd }, overrides);
   transaction(() => {
     clip.notes = result.notes.map(toSdk);
   });
   store.saveOriginal(hashNotes(result.notes), {
     original: state.original.map(({ selected: _s, ...n }) => n),
     savedAt: Date.now(),
-    forced,
+    overrides,
   });
   store.saveLast({ params, seed });
 }
