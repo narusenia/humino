@@ -48,6 +48,8 @@ let tab: Tab = "humanize";
 let userPresets: Preset[] = clone(input.presets);
 let presetsChanged = false;
 let presetIndex = -1;
+/** True right after Init, until something is edited. */
+let isInit = false;
 /** Stroke directions fixed by Strum Down / Up; Clear empties it. */
 let overrides: Required<Overrides> = { chords: {}, notes: {}, ...clone(input.overrides) };
 /** Dialog-side selection, one flag per input note (starts from the clip's selection). */
@@ -127,6 +129,7 @@ const enabled = (d: Def) => !d.mode || d.mode === params.mode;
 
 function edited() {
   presetIndex = -1;
+  isInit = false;
   renderPresetName();
   schedule();
 }
@@ -330,12 +333,13 @@ function renderMode() {
 }
 
 function renderPresetName() {
-  $("preset-name").textContent = presetIndex >= 0 ? allPresets()[presetIndex]!.name : "custom";
+  $("preset-name").textContent = presetIndex >= 0 ? allPresets()[presetIndex]!.name : isInit ? "Init" : "custom";
 }
 
 function loadPreset(i: number) {
   const list = allPresets();
   presetIndex = (i + list.length) % list.length;
+  isInit = false;
   const p = list[presetIndex]!;
   const mode = params.mode;
   params = clone(p.params);
@@ -952,28 +956,69 @@ function renderSelbar() {
 
 $("prev").onclick = () => loadPreset(presetIndex < 0 ? allPresets().length - 1 : presetIndex - 1);
 $("next").onclick = () => loadPreset(presetIndex + 1);
-$("menu").onclick = () => {
-  const panel = $("menu-panel");
-  panel.hidden = !panel.hidden;
-  $("menu").setAttribute("aria-expanded", String(!panel.hidden));
-  if (!panel.hidden) $("preset-input").focus();
-};
+/** Every setting back to its default; the mode and the hand edits stay. */
+function initParams() {
+  const mode = params.mode;
+  params = clone(DEFAULT_PARAMS);
+  params.mode = mode;
+  presetIndex = -1;
+  isInit = true;
+  renderMode();
+  renderParams();
+  renderPresetName();
+  schedule();
+}
+
+function renderPresetList() {
+  const item = (label: string, active: boolean, pick: () => void, remove?: () => void) => {
+    const row = h("div", { className: `preset-item${active ? " active" : ""}` }, h("button", { className: "pick", onclick: () => (pick(), togglePresets(false)) }, label));
+    row.setAttribute("role", "option");
+    row.setAttribute("aria-selected", String(active));
+    if (remove) row.append(h("button", { className: "remove", title: ja ? "削除" : "Delete", onclick: remove }, "×"));
+    return row;
+  };
+  const heading = (t: string) => h("div", { className: "preset-heading" }, t);
+  const tag = (m: Preset["mode"]) => (m === "any" ? "" : ` · ${m}`);
+  $("preset-list").replaceChildren(
+    item("Init", isInit, initParams),
+    heading(ja ? "組み込み" : "Factory"),
+    ...BUILTIN_PRESETS.map((p, i) => item(`${p.name}${tag(p.mode)}`, presetIndex === i, () => loadPreset(i))),
+    heading(ja ? "ユーザー" : "User"),
+    ...(userPresets.length
+      ? userPresets.map((p, i) =>
+          item(`${p.name}${tag(p.mode)}`, presetIndex === BUILTIN_PRESETS.length + i, () => loadPreset(BUILTIN_PRESETS.length + i), () => {
+            userPresets.splice(i, 1);
+            presetsChanged = true;
+            if (presetIndex === BUILTIN_PRESETS.length + i) presetIndex = -1;
+            else if (presetIndex > BUILTIN_PRESETS.length + i) presetIndex--;
+            renderPresetName();
+            renderPresetList();
+          }),
+        )
+      : [h("div", { className: "preset-empty" }, ja ? "まだありません" : "none yet")]),
+  );
+}
+
+function togglePresets(open = $("menu-panel").hidden) {
+  $("menu-panel").hidden = !open;
+  for (const id of ["menu", "preset-name"]) $(id).setAttribute("aria-expanded", String(open));
+  if (open) renderPresetList();
+}
+$("menu").onclick = () => togglePresets();
+$("preset-name").onclick = () => togglePresets();
+document.addEventListener("pointerdown", (e) => {
+  if (!$("menu-panel").hidden && !(e.target as HTMLElement).closest(".preset")) togglePresets(false);
+});
 $("save").onclick = () => {
   const name = $<HTMLInputElement>("preset-input").value.trim();
-  if (!name || BUILTIN_PRESETS.some((p) => p.name === name)) return;
+  if (!name || BUILTIN_PRESETS.some((p) => p.name === name) || name === "Init") return;
   userPresets = [...userPresets.filter((p) => p.name !== name), { name, mode: params.mode, params: clone(params) }];
   presetsChanged = true;
-  presetIndex = BUILTIN_PRESETS.length + userPresets.length - 1;
+  presetIndex = BUILTIN_PRESETS.length + userPresets.findIndex((p) => p.name === name);
+  isInit = false;
+  $<HTMLInputElement>("preset-input").value = "";
   renderPresetName();
-  $("menu-panel").hidden = true;
-};
-$("delete").onclick = () => {
-  if (presetIndex < BUILTIN_PRESETS.length) return; // builtins cannot be deleted
-  userPresets.splice(presetIndex - BUILTIN_PRESETS.length, 1);
-  presetsChanged = true;
-  presetIndex = -1;
-  renderPresetName();
-  $("menu-panel").hidden = true;
+  togglePresets(false);
 };
 $("reseed").onclick = () => {
   seed = Math.floor(Math.random() * 1000);

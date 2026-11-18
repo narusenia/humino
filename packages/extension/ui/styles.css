@@ -92,8 +92,10 @@ input {
   right: 0;
   z-index: 2;
   display: flex;
+  flex-direction: column;
   gap: 6px;
-  padding: 8px;
+  width: 260px;
+  padding: 6px;
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 6px;
@@ -198,3 +200,18 @@ details.advanced summary { cursor: pointer; color: var(--text-dim); font-size: 1
 .tip[hidden] { display: none; }
 .preview { cursor: crosshair; }
 .selbar .segmented button[aria-checked="true"] { background: var(--stage-strum); }
+
+/* Preset list */
+.preset-name { background: none; border: none; min-width: 140px; padding: 4px 8px; text-align: center; }
+.preset-name:hover { background: var(--surface); }
+.preset-list { display: flex; flex-direction: column; max-height: 320px; overflow-y: auto; }
+.preset-heading { font-size: 11px; color: var(--text-dim); padding: 8px 8px 2px; }
+.preset-item { display: flex; align-items: center; border-radius: 4px; }
+.preset-item:hover { background: var(--line); }
+.preset-item .pick { flex: 1; text-align: left; background: none; border: none; padding: 5px 8px; }
+.preset-item.active .pick { color: var(--accent); font-weight: 450; }
+.preset-item .remove { background: none; border: none; color: var(--text-dim); padding: 2px 8px; }
+.preset-item .remove:hover { color: var(--text); }
+.preset-empty { font-size: 12px; color: var(--muted); padding: 4px 8px; }
+.preset-save { display: flex; gap: 6px; padding-top: 6px; border-top: 1px solid var(--line); }
+.preset-save input { flex: 1; min-width: 0; }
