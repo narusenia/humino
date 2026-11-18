@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 import { describe, expect, it } from "vitest";
-import { BUILTIN_PRESETS, DEFAULT_PARAMS, hashNotes, process, type Note, type Params } from "../src/index.js";
+import { BUILTIN_PRESETS, chordKey, DEFAULT_PARAMS, hashNotes, noteKey, process, type Note, type Params } from "../src/index.js";
 
 const chords = (): Note[] =>
   [0, 0.5, 1, 1.5].flatMap((startTime) =>
@@ -38,6 +38,29 @@ describe("process", () => {
     expect(out.slice(0, 6)).toEqual(input.slice(0, 6));
     expect(out.slice(12)).toEqual(input.slice(12));
     expect(out.slice(6, 12)).not.toEqual(input.slice(6, 12));
+  });
+});
+
+describe("overrides", () => {
+  it("lock keeps the original note, even an upstroke-skipped one", () => {
+    const input = chords();
+    const skipped = input[6]!; // lowest note of the upstroke at 0.5
+    const r = process(input, DEFAULT_PARAMS, ctx, { notes: { [noteKey(input[0]!)]: { lock: true }, [noteKey(skipped)]: { lock: true } } });
+    expect(r.final[0]).toEqual(input[0]);
+    expect(r.dropped.has(6)).toBe(false);
+  });
+
+  it("nudge and velocity offsets apply on top of the result", () => {
+    const input = chords();
+    const base = process(input, DEFAULT_PARAMS, ctx).final[0]!;
+    const r = process(input, DEFAULT_PARAMS, ctx, { notes: { [noteKey(input[0]!)]: { dt: 60, dv: -10 } } });
+    expect(r.final[0]!.startTime).toBeCloseTo(base.startTime + 0.1); // 60 ms at 100 BPM
+    expect(r.final[0]!.velocity).toBe(base.velocity! - 10);
+  });
+
+  it("chord overrides reach the strum stage", () => {
+    const r = process(chords(), DEFAULT_PARAMS, ctx, { chords: { [chordKey(0.5)]: { direction: "down" } } });
+    expect(r.dropped.size).toBe(1); // only the upstroke at 1.5 skips a string now
   });
 });
 

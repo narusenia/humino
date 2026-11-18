@@ -37,7 +37,7 @@ describe("strum direction", () => {
   it("honours all-down and forced directions", () => {
     const notes = [0, 0.5].flatMap((s) => chordAt(s));
     const { a } = run(notes);
-    const p = { ...DEFAULT_STRUM, direction: "down" as const, forced: { [chordKey(0)]: "up" as const } };
+    const p = { ...DEFAULT_STRUM, direction: "down" as const, chords: { [chordKey(0)]: { direction: "up" as const } } };
     expect(a.groups.map((g) => strumDirection(g, 8, p))).toEqual(["up", "down"]);
   });
 });
@@ -62,6 +62,12 @@ describe("applyStrum", () => {
     expect(work[0]!.startTime).toBe(0);
     const later = run(chordAt(1), { anchor: "center" }).work;
     expect(later[0]!.startTime).toBeCloseTo(0.985);
+  });
+
+  it("per-chord speed and up skip override the globals", () => {
+    const { work, dropped } = run(chordAt(0.5), { chords: { [chordKey(0.5)]: { speed: 50, upSkip: 0 } } });
+    expect(dropped.size).toBe(0);
+    expect(work[0]!.startTime).toBeCloseTo(0.55);
   });
 
   it("cuts the previous chord just after the next one starts", () => {

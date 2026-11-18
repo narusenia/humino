@@ -22,8 +22,15 @@ export type StrumParams = {
   anchor: "first" | "center";
   /** ms the previous chord rings past the next chord's start. */
   overlap: number;
-  /** Directions fixed by Strum Down / Up, keyed by `chordKey` of the original start. */
-  forced?: Record<string, Direction>;
+  /** Per-chord overrides (Strum Down / Up, the dialog), keyed by `chordKey` of the original start. */
+  chords?: Record<string, ChordOverride>;
+};
+
+export type ChordOverride = {
+  direction?: Direction;
+  /** ms, replaces downSpeed / upSpeed for this chord. */
+  speed?: number;
+  upSkip?: number;
 };
 
 export const DEFAULT_STRUM: StrumParams = {
@@ -48,7 +55,7 @@ export const resolveMotion = (a: Analysis, p: StrumParams): 8 | 16 =>
 
 /** The hand moves down on even motion steps and up on odd ones. */
 export function strumDirection(g: Group, motion: 8 | 16, p: StrumParams): Direction {
-  const forced = p.forced?.[chordKey(g.start)];
+  const forced = p.chords?.[chordKey(g.start)]?.direction;
   if (forced) return forced;
   if (p.direction === "down") return "down";
   return Math.round(g.start / (motion === 16 ? 0.25 : 0.5)) % 2 === 0 ? "down" : "up";
@@ -74,10 +81,11 @@ export function applyStrum(work: Note[], a: Analysis, target: boolean[], p: Stru
     if (!target[gi]) return;
 
     const dir = strumDirection(g, motion, p);
+    const ov = p.chords?.[chordKey(g.start)];
     let order = lowToHigh(work, g.idx);
     if (dir === "up") {
       order.reverse();
-      const skip = Math.min(p.upSkip, order.length - 2);
+      const skip = Math.min(ov?.upSkip ?? p.upSkip, order.length - 2);
       for (const i of order.slice(order.length - skip)) dropped.add(i);
       order = order.slice(0, order.length - skip);
     }
@@ -87,7 +95,7 @@ export function applyStrum(work: Note[], a: Analysis, target: boolean[], p: Stru
     const next = a.groups.slice(gi + 1).find(isChord);
     const cut = next ? work[next.idx[0]!]!.startTime + toBeats(p.overlap) : Infinity;
     const end = Math.min(chordEnd, cut);
-    const speed = (dir === "down" ? p.downSpeed : p.upSpeed) * (1 + (jitter * p.speedJitter) / 100);
+    const speed = (ov?.speed ?? (dir === "down" ? p.downSpeed : p.upSpeed)) * (1 + (jitter * p.speedJitter) / 100);
     const last = Math.max(1, order.length - 1);
 
     order.forEach((i, k) => {
