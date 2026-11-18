@@ -20,8 +20,10 @@ export type ConnectParams = {
   runDirection: RunDirection;
   /** 0..100 %, grace note before the top note. */
   grace: number;
-  /** Beats, 1/64..1/16. */
+  /** Beats per grace note, 1/64..1/16. */
   graceLength: number;
+  /** 1..6 grace notes climbing into the top note. */
+  graceSteps: number;
   /** 0..100 %, velocity of the added notes against the note they lead from (bass) or into (grace). */
   velocity: number;
 };
@@ -34,6 +36,7 @@ export const DEFAULT_CONNECT: ConnectParams = {
   runDirection: "auto",
   grace: 20,
   graceLength: 1 / 32,
+  graceSteps: 1,
   velocity: 80,
 };
 
@@ -117,10 +120,16 @@ export function applyConnect(
     // Grace: a single-note group already got its approach from the bass line.
     const pt = work[prev[prev.length - 1]!]!;
     const nt = work[next[next.length - 1]!]!;
-    if (rGrace < p.grace / 100 && !(bassAdded && next.length === 1) && nt.startTime - pt.startTime >= MIN_GAP) {
-      const start = nt.startTime - p.graceLength;
+    const topGap = nt.startTime - pt.startTime;
+    if (rGrace < p.grace / 100 && !(bassAdded && next.length === 1) && topGap >= MIN_GAP) {
+      // as many as fit in half the gap, climbing a scale step (or semitone) at a time
+      const n = Math.max(1, Math.min(Math.round(p.graceSteps), Math.floor(topGap / 2 / p.graceLength + 1e-9)));
+      const pitches = [below(nt.pitch, scale)];
+      while (pitches.length < n) pitches.unshift(below(pitches[0]!, scale));
+      const start = nt.startTime - n * p.graceLength;
       trimTo(pt, start);
-      added.push({ pitch: below(nt.pitch, scale), startTime: start, duration: p.graceLength, velocity: clampVelocity(((nt.velocity ?? DEFAULT_VELOCITY) * p.velocity) / 100) });
+      const velocity = clampVelocity(((nt.velocity ?? DEFAULT_VELOCITY) * p.velocity) / 100);
+      pitches.forEach((pitch, k) => added.push({ pitch, startTime: start + k * p.graceLength, duration: p.graceLength, velocity }));
     }
   }
   return added;

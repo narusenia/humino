@@ -52,6 +52,8 @@ describe("connect", () => {
     const r = process(chords, params({ grace: 100, graceLength: 1 / 32 }), ctx);
     expect(r.added).toEqual([{ pitch: 71, startTime: 2 - 1 / 32, duration: 1 / 32, velocity: 80 }]);
     expect(r.final[2]!.duration).toBe(2 - 1 / 32);
+    const three = process(chords, params({ grace: 100, graceLength: 1 / 16, graceSteps: 3 }), ctx).added;
+    expect(three.map((n) => [n.pitch, n.startTime])).toEqual([[67, 2 - 3 / 16], [69, 2 - 2 / 16], [71, 2 - 1 / 16]]);
   });
 
   it("only connects targeted groups", () => {

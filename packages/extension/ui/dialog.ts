@@ -125,6 +125,7 @@ const CONNECT: Def[] = [
   { kind: "num", section: "connect", key: "passing", label: "passing", min: 0, max: 100, step: 1, unit: "%", tip: ["Chance of a scale tone between two bass notes (needs Scale Mode)", "2 つのベースのあいだにスケール音を入れる確率（Scale Mode が必要）"] },
   { kind: "num", section: "connect", key: "grace", label: "grace", min: 0, max: 100, step: 1, unit: "%", tip: ["Chance of a grace note just before the top note", "最高音の直前に前打音を入れる確率"] },
   { kind: "num", section: "connect", key: "velocity", label: "velocity", min: 0, max: 100, step: 1, unit: "%", tip: ["Velocity of the added notes, as a % of the bass note they leave or the top note they lead into", "足した音のベロシティ。前のベース、または次の最高音に対する %"] },
+  { kind: "num", section: "connect", key: "graceSteps", label: "grace steps", min: 1, max: 6, step: 1, tip: ["Grace notes climbing into the top note; fewer when there is no room", "最高音へ上がっていく前打音の数。間が足りなければ減らす"] },
   { kind: "choice", section: "connect", key: "graceLength", label: "grace len", options: [[1 / 64, "1/64"], [1 / 32, "1/32"], [1 / 16, "1/16"]], tip: ["Grace note length in beats", "前打音の長さ（拍）"] },
 ];
 
