@@ -15,13 +15,15 @@ export type ConnectParams = {
   passing: number;
   /** 0..100 %, semitone run into the next bass note (rolled before passing). */
   chromatic: number;
-  /** 1..4 run notes. */
+  /** 1..6 run notes. */
   steps: number;
   runDirection: RunDirection;
   /** 0..100 %, grace note before the top note. */
   grace: number;
-  /** Beats, 1/32..1/16. */
+  /** Beats, 1/64..1/16. */
   graceLength: number;
+  /** 0..100 %, velocity of the added notes against the note they lead from (bass) or into (grace). */
+  velocity: number;
 };
 
 export const DEFAULT_CONNECT: ConnectParams = {
@@ -32,6 +34,7 @@ export const DEFAULT_CONNECT: ConnectParams = {
   runDirection: "auto",
   grace: 20,
   graceLength: 1 / 32,
+  velocity: 80,
 };
 
 /** Live's current scale; absent when Scale Mode is off. */
@@ -105,7 +108,7 @@ export function applyConnect(
       if (pitches.length) {
         const start = nb.startTime - pitches.length * STEP;
         trimTo(pb, start);
-        const velocity = clampVelocity((pb.velocity ?? DEFAULT_VELOCITY) * 0.8);
+        const velocity = clampVelocity(((pb.velocity ?? DEFAULT_VELOCITY) * p.velocity) / 100);
         pitches.forEach((pitch, k) => added.push({ pitch, startTime: start + k * STEP, duration: STEP, velocity }));
         bassAdded = true;
       }
@@ -117,7 +120,7 @@ export function applyConnect(
     if (rGrace < p.grace / 100 && !(bassAdded && next.length === 1) && nt.startTime - pt.startTime >= MIN_GAP) {
       const start = nt.startTime - p.graceLength;
       trimTo(pt, start);
-      added.push({ pitch: below(nt.pitch, scale), startTime: start, duration: p.graceLength, velocity: clampVelocity((nt.velocity ?? DEFAULT_VELOCITY) * 0.7) });
+      added.push({ pitch: below(nt.pitch, scale), startTime: start, duration: p.graceLength, velocity: clampVelocity(((nt.velocity ?? DEFAULT_VELOCITY) * p.velocity) / 100) });
     }
   }
   return added;

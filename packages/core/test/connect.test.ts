@@ -28,6 +28,7 @@ describe("connect", () => {
     expect(up.added.map((n) => n.startTime)).toEqual([1.25, 1.5, 1.75]);
     expect(up.final[0]!.duration).toBe(1.25); // previous note trimmed, total length kept
     expect(up.added[0]!.velocity).toBe(80);
+    expect(process(bass(48, 55), params({ chromatic: 100, velocity: 50 }), ctx).added[0]!.velocity).toBe(50);
     const down = process(bass(55, 48), params({ chromatic: 100, steps: 2 }), ctx);
     expect(down.added.map((n) => n.pitch)).toEqual([50, 49]);
   });
@@ -49,7 +50,7 @@ describe("connect", () => {
   it("puts a grace note a scale step below the next top note", () => {
     const chords: Note[] = [0, 2].flatMap((startTime) => [48, 64, 72].map((pitch) => ({ pitch, startTime, duration: 2, velocity: 100 })));
     const r = process(chords, params({ grace: 100, graceLength: 1 / 32 }), ctx);
-    expect(r.added).toEqual([{ pitch: 71, startTime: 2 - 1 / 32, duration: 1 / 32, velocity: 70 }]);
+    expect(r.added).toEqual([{ pitch: 71, startTime: 2 - 1 / 32, duration: 1 / 32, velocity: 80 }]);
     expect(r.final[2]!.duration).toBe(2 - 1 / 32);
   });
 

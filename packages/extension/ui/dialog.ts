@@ -120,11 +120,12 @@ const STRUM: Def[] = [
 const CONNECT: Def[] = [
   { kind: "choice", section: "connect", key: "on", label: "connect", options: [[false, "off"], [true, "on"]], tip: ["Add notes that lead from one chord to the next", "和音から次の和音へつなぐ音を足す"] },
   { kind: "num", section: "connect", key: "chromatic", label: "chromatic", min: 0, max: 100, step: 1, unit: "%", tip: ["Chance of a semitone run into the next bass note", "次のベースへ半音ずつ近づく音を入れる確率"] },
-  { kind: "num", section: "connect", key: "steps", label: "run steps", min: 1, max: 4, step: 1, tip: ["Run notes, 16ths each; fewer when there is no room", "半音で近づく音の数（1 音 16 分）。間が足りなければ減らす"] },
+  { kind: "num", section: "connect", key: "steps", label: "run steps", min: 1, max: 6, step: 1, tip: ["Run notes, 16ths each; fewer when there is no room", "半音で近づく音の数（1 音 16 分）。間が足りなければ減らす"] },
   { kind: "choice", section: "connect", key: "runDirection", label: "run from", options: [["auto", "auto"], ["up", "below"], ["down", "above"]], tip: ["Side the run comes from; auto follows the previous bass note", "どちらから近づくか。auto は前のベースの側から"] },
   { kind: "num", section: "connect", key: "passing", label: "passing", min: 0, max: 100, step: 1, unit: "%", tip: ["Chance of a scale tone between two bass notes (needs Scale Mode)", "2 つのベースのあいだにスケール音を入れる確率（Scale Mode が必要）"] },
   { kind: "num", section: "connect", key: "grace", label: "grace", min: 0, max: 100, step: 1, unit: "%", tip: ["Chance of a grace note just before the top note", "最高音の直前に前打音を入れる確率"] },
-  { kind: "choice", section: "connect", key: "graceLength", label: "grace len", options: [[1 / 32, "1/32"], [1 / 16, "1/16"]], tip: ["Grace note length in beats", "前打音の長さ（拍）"] },
+  { kind: "num", section: "connect", key: "velocity", label: "velocity", min: 0, max: 100, step: 1, unit: "%", tip: ["Velocity of the added notes, as a % of the bass note they leave or the top note they lead into", "足した音のベロシティ。前のベース、または次の最高音に対する %"] },
+  { kind: "choice", section: "connect", key: "graceLength", label: "grace len", options: [[1 / 64, "1/64"], [1 / 32, "1/32"], [1 / 16, "1/16"]], tip: ["Grace note length in beats", "前打音の長さ（拍）"] },
 ];
 
 const GROOVE: Def[] = [

@@ -58,12 +58,13 @@ export const CONTROLS: Control[] = [
   tab("anchor", "Anchor", "Which string lands on the grid: the first or the middle one.", 2, [106, 42], ["first", "center"] as const, ["1st", "Ctr"], (p) => p.strum.anchor, (p, v) => (p.strum.anchor = v)),
   // Connect
   dial("chromatic", "Chromatic", "Chance of a semitone run into the next bass note.", 3, 0, 100, UNIT.pct, (p) => p.connect.chromatic, (p, v) => (p.connect.chromatic = v)),
-  dial("steps", "Run Steps", "Run notes, 16ths each. Fewer when there is no room.", 3, 1, 4, UNIT.int, (p) => p.connect.steps, (p, v) => (p.connect.steps = Math.max(1, Math.round(v)))),
+  dial("steps", "Run Steps", "Run notes, 16ths each. Fewer when there is no room.", 3, 1, 6, UNIT.int, (p) => p.connect.steps, (p, v) => (p.connect.steps = Math.max(1, Math.round(v)))),
   dial("passing", "Passing", "Chance of a scale tone between two bass notes. Needs Scale Mode.", 3, 2, 100, UNIT.pct, (p) => p.connect.passing, (p, v) => (p.connect.passing = v)),
   dial("grace", "Grace", "Chance of a grace note just before the top note.", 3, 3, 100, UNIT.pct, (p) => p.connect.grace, (p, v) => (p.connect.grace = v)),
-  tab("connect", "Connect", "Adds notes that lead from one chord to the next. Off by default.", 3, [54, 94, ROW[1]! + 4], [false, true] as const, ["Off", "On"], (p) => p.connect.on, (p, v) => (p.connect.on = v)),
-  tab("gracelen", "Grace Len", "Grace note length: 1/32 or 1/16 of a beat.", 3, [54, 94, ROW[1]! + 26], [1 / 32, 1 / 16] as const, ["1/32", "1/16"], (p) => p.connect.graceLength, (p, v) => (p.connect.graceLength = v)),
-  tab("rundir", "Run From", "Side the run comes from. Auto follows the previous bass note.", 3, [4, 144], ["auto", "up", "down"] as const, ["Auto", "Below", "Above"], (p) => p.connect.runDirection, (p, v) => (p.connect.runDirection = v)),
+  dial("cvel", "Velocity", "Velocity of the added notes, as a % of the bass note they leave or the top note they lead into.", 3, 4, 100, UNIT.pct, (p) => p.connect.velocity, (p, v) => (p.connect.velocity = v)),
+  tab("connect", "Connect", "Adds notes that lead from one chord to the next. Off by default.", 3, [104, 44, ROW[1]! + 16], [false, true] as const, ["Off", "On"], (p) => p.connect.on, (p, v) => (p.connect.on = v)),
+  tab("rundir", "Run From", "Side the run comes from. Auto follows the previous bass note.", 3, [4, 66], ["auto", "up", "down"] as const, ["Auto", "Blw", "Abv"], (p) => p.connect.runDirection, (p, v) => (p.connect.runDirection = v)),
+  tab("gracelen", "Grace Len", "Grace note length: 1/64, 1/32 or 1/16 of a beat.", 3, [74, 74], [1 / 64, 1 / 32, 1 / 16] as const, ["1/64", "1/32", "1/16"], (p) => p.connect.graceLength, (p, v) => (p.connect.graceLength = v)),
 ];
 
 // ---------------------------------------------------------------- devices
