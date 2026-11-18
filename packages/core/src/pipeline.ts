@@ -6,6 +6,7 @@ import { applyHumanize, DEFAULT_HUMANIZE, type HumanizeParams } from "./humanize
 import { applyPedal, type PedalMode } from "./pedal.js";
 import { applyConnect, DEFAULT_CONNECT, type ConnectParams } from "./connect.js";
 import { createRng } from "./rng.js";
+import { DEFAULT_VOICING, type VoicingParams } from "./voicing.js";
 import { applyStrum, chordKey, DEFAULT_STRUM, type ChordOverride, type StrumParams } from "./strum.js";
 import { clampVelocity, DEFAULT_VELOCITY, type Context, type Note } from "./types.js";
 
@@ -22,6 +23,8 @@ export type Params = {
   connect: ConnectParams;
   /** ms: notes starting this close together are one chord, so slightly off-grid chords still count. */
   chordWindow: number;
+  /** Guitar mode only; run through `voice()` before `process()`. */
+  voicing: VoicingParams;
 };
 
 export const DEFAULT_PARAMS: Params = {
@@ -32,6 +35,7 @@ export const DEFAULT_PARAMS: Params = {
   pedal: "off",
   connect: DEFAULT_CONNECT,
   chordWindow: 5,
+  voicing: DEFAULT_VOICING,
 };
 
 /** `chordWindow` in beats at `tempo`, for `analyze`. */
@@ -46,6 +50,7 @@ export function completeParams(p: Params): Params {
     humanize: { ...DEFAULT_PARAMS.humanize, ...p.humanize },
     strum: { ...DEFAULT_PARAMS.strum, ...p.strum },
     connect: { ...DEFAULT_PARAMS.connect, ...p.connect },
+    voicing: { ...DEFAULT_PARAMS.voicing, ...p.voicing },
   };
 }
 
