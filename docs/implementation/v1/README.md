@@ -7,7 +7,7 @@
 | 01 | リポジトリの雛形 | workspaces、mise、lefthook、CI、文書、ADR | `mise run check` が通る | 完了 |
 | 02 | core：拍とグリッドの解析 | 和音の判定、ステップ位置、拍の強さ、3 連の判定、ms と拍の変換 | テストで 16 分・3 連・和音を判定できる | 完了 |
 | 03 | core：Groove | ステップ表、Swing、拍のアクセントの初期値 | Swing 50 % で裏の 16 分が想定どおりずれるテスト | 完了 |
-| 04 | core：Humanize | Drift（AR(1)）、Jitter と beat weight、ベロシティ、chord balance、legato、length jitter | シード値が同じなら同じ出力、和音の構成音が同じだけ動くテスト | 完了 |
+| 04 | core：Humanize | Drift（時間ベースの平均回帰）、Jitter と beat weight、ベロシティ、chord balance、legato、length jitter | シード値が同じなら同じ出力、和音の構成音が同じだけ動くテスト | 完了 |
 | 05 | core：Strum | 振りの細かさと向き、速さ、taper、up skip、anchor、終わりを揃える、overlap、向きの固定 | 8 分と 16 分のパターンで向きが正しいテスト | 完了 |
 | 06 | core：疑似ペダル | bar / chord の区間、同じ音程の切断 | 区間の終わりまで伸びるテスト | 完了 |
 | 07 | core：パイプラインと選択範囲 | 処理の順番、選択の和音への広げ方、Drift を全体で計算して部分に当てる | 選択ありと選択なしの両方のテスト | 完了 |
