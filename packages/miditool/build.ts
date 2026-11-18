@@ -6,7 +6,7 @@
 import * as esbuild from "esbuild";
 import * as fs from "node:fs";
 import { BUILTIN_PRESETS, DEFAULT_PARAMS } from "@humino/core";
-import { CONTROLS, PAGES } from "./src/controls.js";
+import { CONTROLS, PAGES, TAB_Y } from "./src/controls.js";
 
 const js = (
   await esbuild.build({
@@ -53,7 +53,7 @@ wire("code", 0, "out", 0);
 wire("code", 1, "in", 0);
 
 // --- controls (presentation: 152 × 147, the MIDI Tools panel)
-// Header: mode + preset, then a page tab; each page shows its CONTROLS (src/controls.ts).
+// Header: page tab + mode; each page shows its CONTROLS (src/controls.ts). The preset menu sits in the Hum tab row.
 const d = DEFAULT_PARAMS;
 const valueof = (v: Record<string, unknown>) => ({ saved_attribute_attributes: { valueof: v } });
 const enumParam = (longname: string, short: string, names: string[], initial: number) =>
@@ -70,7 +70,7 @@ wire("code", 2, "route", 0);
 obj("thispatcher", "thispatcher", 1, 2, { patching_rect: [200, 400, 80, 22] });
 wire("code", 3, "thispatcher", 0);
 
-tabBox("mode", [4, 2, 64, 15], 640, 10, false, enumParam("Mode", "Mode", ["Gtr", "Pno"], d.mode === "guitar" ? 0 : 1));
+tabBox("mode", [104, 2, 44, 15], 640, 10, false, enumParam("Mode", "Mode", ["Gtr", "Pno"], d.mode === "guitar" ? 0 : 1));
 obj("p-mode", "prepend mode", 1, 1, { patching_rect: [640, 34, 90, 22] });
 wire("mode", 0, "p-mode", 0);
 wire("p-mode", 0, "code", 0);
@@ -80,14 +80,14 @@ wire("s-mode", 0, "mode", 0);
 
 boxes.push({
   id: "preset", maxclass: "live.menu", varname: "preset", numinlets: 1, numoutlets: 3, outlettype: ["", "", "float"], parameter_enable: 1,
-  patching_rect: [800, 10, 100, 15], presentation: 1, presentation_rect: [72, 2, 76, 15],
+  patching_rect: [800, 10, 100, 15], presentation: 1, presentation_rect: [4, TAB_Y, 144, 15],
   ...enumParam("Preset", "Preset", BUILTIN_PRESETS.map((p) => p.name), 0),
 });
 obj("p-preset", "prepend preset", 1, 1, { patching_rect: [800, 34, 100, 22] });
 wire("preset", 0, "p-preset", 0);
 wire("p-preset", 0, "code", 0);
 
-tabBox("page", [4, 19, 144, 14], 920, 10, false, enumParam("Page", "Page", PAGES, 0));
+tabBox("page", [4, 2, 96, 15], 920, 10, false, enumParam("Page", "Page", PAGES, 0));
 obj("p-page", "prepend page", 1, 1, { patching_rect: [920, 34, 90, 22] });
 wire("page", 0, "p-page", 0);
 wire("p-page", 0, "code", 0);
@@ -100,7 +100,7 @@ CONTROLS.forEach((c, k) => {
   else
     boxes.push({
       id: c.key, maxclass: "live.dial", varname: c.key, numinlets: 1, numoutlets: 2, outlettype: ["", "float"], parameter_enable: 1,
-      patching_rect: [px, py, 44, 46], presentation: 1, presentation_rect: [c.x, c.y, 44, 46], ...(hidden && { hidden: 1 }),
+      patching_rect: [px, py, 44, 48], presentation: 1, presentation_rect: [c.x, c.y, 44, 48], ...(hidden && { hidden: 1 }),
       ...valueof({ parameter_longname: c.label, parameter_shortname: c.label, parameter_type: 0, parameter_mmin: 0, parameter_mmax: c.max, parameter_unitstyle: c.unit, parameter_initial: [c.get(d)], parameter_initial_enable: 1 }),
     });
   obj(`p-${c.key}`, `prepend param ${c.key}`, 1, 1, { patching_rect: [px, py + 56, 66, 22] });

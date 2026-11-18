@@ -108,4 +108,5 @@ g.param = (key: string, v: number) => {
 /** Page tab: hide the other pages' controls through [thispatcher]. */
 g.page = (i: number) => {
   for (const c of CONTROLS) outlet(3, "script", c.page === i ? "show" : "hide", c.key);
+  outlet(3, "script", i === 0 ? "show" : "hide", "preset");
 };

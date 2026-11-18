@@ -14,10 +14,11 @@ export type Control =
   | (Base & { kind: "tab"; options: string[]; w: number });
 
 const UNIT = { int: 0, ms: 2, pct: 5 };
-// Dial rows and the tab row under them (see build.ts for the header).
+// Header row (page + mode) is y 2-17; two dial rows with a gap so a value never
+// touches the name below it; then one row of tabs (or the preset menu on Hum).
 const COL = [4, 54, 104];
-const ROW = [36, 82];
-const TAB_Y = 130;
+const ROW = [21, 75];
+export const TAB_Y = 129;
 
 const dial = (key: string, label: string, page: number, slot: number, max: number, unit: number, get: Base["get"], set: Base["set"]): Control => ({
   kind: "dial", key, label, page, x: COL[slot % 3]!, y: ROW[Math.floor(slot / 3)]!, max, unit, get, set,
