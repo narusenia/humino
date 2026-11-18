@@ -8,4 +8,4 @@ core を 1 つの JS にまとめ、Max 9 の `v8.codebox` で動かす Transfor
 | 02 | `build.ts` で `humino.amxd` を生成（ヘッダー、パッチ、パネル 152×147） | 完了 |
 | 03 | mise タスク `miditool:build` と `miditool:install` | 完了 |
 | 04 | Live で確かめる（読み込み、変換、つまみでのかけ直し、プリセット、テンポ） | 完了 |
-| 05 | Releases に `humino.amxd` を添付 | 未着手 |
+| 05 | Releases に `humino.amxd` を添付（v0.2.0） | 完了 |

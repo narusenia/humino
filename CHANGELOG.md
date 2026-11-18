@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.0 (2026-11-19)
+
+- MIDI Tools version: `humino.amxd`, a MIDI Transformation for Live 12 Suite. Works on the notes selected in the piano roll and re-applies as you turn its dials. Three pages (Hum, Feel, Strum) cover every parameter except the 16-step groove table
+- Humanize: new `spread` offsets each note of a chord on its own (0 moves the chord as one)
+- Strum: only notes the next stroke plays again are cut, so held chord tones keep ringing; upstrokes keep a missed low string ringing from the previous stroke instead of deleting it
+- Groove: a few triplet notes no longer turn a straight clip into a triplet one, which had switched swing off
+- Settings saved by 0.1.0 get the new fields filled with defaults
+
 ## 0.1.0 (2026-11-19)
 
 First release. Requires Ableton Live 12 Suite with the Extensions SDK beta (12.4.5 or later). Tested on macOS.
