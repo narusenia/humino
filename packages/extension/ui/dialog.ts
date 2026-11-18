@@ -18,6 +18,9 @@ import {
   type Note,
   type Overrides,
   type Stage,
+  nameChord,
+  chordLabel,
+  degree,
 } from "@humino/core";
 import type { DialogInput, DialogOutput } from "../src/dialog.js";
 
@@ -102,7 +105,6 @@ const HUMANIZE: Def[] = [
   { kind: "num", section: "humanize", key: "chordBalance", label: "chord bal", min: 0, max: 100, step: 1, unit: "%", tip: ["Louder top and bass, softer inner notes", "和音の最高音と最低音を強く、中の音を弱く"] },
   { kind: "num", section: "humanize", key: "legato", label: "legato", min: 0, max: 100, step: 1, unit: "%", tip: ["Closes the gap to the next note", "次のノートとの隙間を詰める"] },
   { kind: "num", section: "humanize", key: "lengthJitter", label: "length ±", min: 0, max: 30, step: 1, unit: "%", tip: ["Random length change", "ノート長のランダムな増減"] },
-  { kind: "num", section: "pedal", key: "chordWindow", label: "chord window", min: 0, max: 50, step: 1, unit: "ms", advanced: true, tip: ["Notes starting this close together count as one chord, so chords played a little off the grid are still chords", "この間隔の中で始まる音を 1 つの和音とみなす。グリッドから少しずれた和音もまとめて扱える"] },
   { kind: "num", section: "humanize", key: "driftReturn", label: "drift return", min: 0, max: 1, step: 0.01, advanced: true, tip: ["How fast the drift comes back to the grid", "揺れがグリッドへ戻る速さ"] },
 ];
 
@@ -323,6 +325,7 @@ function renderTabs() {
 }
 
 function renderParams() {
+  renderChordWindow();
   const main = $("params");
   main.style.setProperty("--section", `var(${STAGE_COLOR[tab]})`);
   if (tab === "groove") main.replaceChildren(grooveTable());
@@ -395,6 +398,32 @@ function loadPreset(i: number) {
   schedule();
 }
 
+/** Header: notes starting this close together are one chord (drag up / down, double-click resets). */
+function renderChordWindow() {
+  $("chordwin").textContent = `${Math.round(params.chordWindow)} ms`;
+}
+{
+  const el = $("chordwin");
+  el.parentElement!.title = ja
+    ? "この間隔の中で始まる音を 1 つの和音とみなす。グリッドから少しずれた和音もまとめて扱える。上下ドラッグで変更、ダブルクリックで初期値"
+    : "Notes starting this close together count as one chord, so chords played a little off the grid are still chords. Drag up or down; double-click resets";
+  const set = (v: number) => {
+    params.chordWindow = Math.min(50, Math.max(0, Math.round(v)));
+    renderChordWindow();
+    edited();
+  };
+  el.addEventListener("pointerdown", (e) => {
+    e.preventDefault();
+    el.setPointerCapture(e.pointerId);
+    const y0 = e.clientY;
+    const v0 = params.chordWindow;
+    const move = (m: PointerEvent) => set(v0 + ((y0 - m.clientY) * 50) / (m.shiftKey ? 1000 : 200));
+    el.addEventListener("pointermove", move);
+    el.addEventListener("pointerup", () => el.removeEventListener("pointermove", move), { once: true });
+  });
+  el.addEventListener("dblclick", () => set(DEFAULT_PARAMS.chordWindow));
+}
+
 function renderSeed() {
   $("seed").textContent = String(seed).padStart(3, "0");
 }
@@ -406,6 +435,7 @@ const tip = $("tip");
 const LABEL_W = 34; // note names
 const PAD = 12;
 const BAR_STRIP = 16; // bar numbers
+const CHORD_STRIP = 14; // chord names (and degrees with Scale Mode on)
 const ARROW_STRIP = 18; // stroke arrows
 const VEL_H = 56; // velocity lane
 const NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
@@ -675,7 +705,7 @@ function draw() {
   const r = compute();
   fullEnd = Math.max(input.clipEnd, ...r.final.map((n) => n.startTime + n.duration), 1);
   const { t0, t1 } = span();
-  const top = BAR_STRIP + ARROW_STRIP;
+  const top = BAR_STRIP + CHORD_STRIP + ARROW_STRIP;
   const notesBottom = hgt - VEL_H - 8;
   // Fold: one row per pitch that is used, like Live's Fold.
   const pitches = [...new Set([...notes, ...r.added].map((n) => n.pitch))].sort((a, b) => b - a);
@@ -726,6 +756,33 @@ function draw() {
   c.moveTo(LABEL_W, notesBottom + 4.5);
   c.lineTo(w - PAD, notesBottom + 4.5);
   c.stroke();
+
+  // chord names over each chord, the degree after it when Live's scale is known; skipped where they would collide
+  {
+    let freeX = -Infinity;
+    const ny = BAR_STRIP + 10;
+    for (const g of r.analysis.groups) {
+      if (g.idx.length < 2) continue;
+      const ch = nameChord(g.idx.map((i) => notes[i]!.pitch));
+      if (!ch) continue;
+      const gx = x(g.start) + 2;
+      if (gx < freeX || gx < LABEL_W - 2 || gx > w - PAD) continue;
+      const name = chordLabel(ch);
+      const deg = input.scale ? degree(ch, input.scale) : "";
+      c.globalAlpha = 1;
+      c.font = `11px ${font}`;
+      c.fillStyle = color("--text");
+      c.fillText(name, gx, ny);
+      let end = gx + c.measureText(name).width;
+      if (deg) {
+        c.font = `10px ${font}`;
+        c.fillStyle = color("--text-dim");
+        c.fillText(deg, end + 4, ny);
+        end += 4 + c.measureText(deg).width;
+      }
+      freeX = end + 8;
+    }
+  }
 
   // originals: faint outline
   c.globalAlpha = 0.6;
@@ -836,7 +893,7 @@ function draw() {
       c.globalAlpha = 1;
       c.strokeStyle = fixed ? color("--stage-strum") : color("--text-dim");
       c.lineWidth = fixed ? 1.75 : 1.25;
-      const a0 = BAR_STRIP + 2;
+      const a0 = BAR_STRIP + CHORD_STRIP + 2;
       const [tipY, tailY] = down ? [a0 + 13, a0 + 2] : [a0 + 2, a0 + 13];
       const dir = down ? -1 : 1;
       c.beginPath();

@@ -47,7 +47,8 @@ Releases から `humino.amxd` をダウンロードし、`User Library/MIDI Tool
 
 ### v2
 
-- **Connect**：和音と和音のあいだに、経過音、半音ずつ進む Chromatic Run（1〜4 音）、前打音を足します。経過音には Live の Scale Mode が要ります。
+- **Connect**：和音と和音のあいだに、経過音、半音ずつ進む Chromatic Run（1〜6 音）、前打音を足します。経過音には Live の Scale Mode が要ります。
+- **コード名**：ダイアログのプレビューに和音のコード名を出します。Live の Scale Mode がオンなら、ディグリー（I、vi、V7 など）も添えます。ヘッダーの chord window で、どこまで音の頭がずれていても 1 つの和音とみなすかを決めます。
 - **ギターボイシング**（予定）：和音をギターで実際に押さえられる形に並べ替えます。チューニングは Standard、Drop D、カポを選べます。
 - 別のクリップから Groove を抜き出します（予定）。
 

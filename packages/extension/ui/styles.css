@@ -103,6 +103,7 @@ input {
 }
 .menu[hidden] { display: none; }
 .seed #seed { color: var(--text); }
+#chordwin { color: var(--text); cursor: ns-resize; }
 
 /* Segmented control (radio group) */
 .segmented { display: inline-flex; border: 1px solid var(--line); border-radius: 4px; overflow: hidden; }

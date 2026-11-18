@@ -47,7 +47,8 @@ There is also one device per stage: `humino Humanize`, `humino Swing`, `humino S
 
 ### v2
 
-- **Connect**: passing tones, chromatic runs (1–4 notes) and grace notes between chords. Passing tones need Live's Scale Mode.
+- **Connect**: passing tones, chromatic runs (1–6 notes) and grace notes between chords. Passing tones need Live's Scale Mode.
+- **Chord names** in the dialog's preview, with the degree (I, vi, V7…) when Live's Scale Mode is on. The chord window in the header sets how close together notes must start to count as one chord.
 - **Guitar voicing** (planned): rearranges chords into shapes a guitarist can actually play (standard, Drop D, capo).
 - Extract a groove from another clip (planned).
 

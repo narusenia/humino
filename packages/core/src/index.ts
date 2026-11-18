@@ -10,4 +10,5 @@ export type { PedalMode } from "./pedal.js";
 export { DEFAULT_CONNECT, type ConnectParams, type RunDirection, type Scale } from "./connect.js";
 export { chordWindowBeats, completeParams, DEFAULT_PARAMS, noteKey, process, STAGES, type Mode, type NoteOverride, type Overrides, type Params, type Result, type Stage } from "./pipeline.js";
 export { hashNotes } from "./hash.js";
+export { chordLabel, degree, nameChord, type ChordName } from "./chords.js";
 export { BUILTIN_PRESETS, type Preset } from "./presets.js";
