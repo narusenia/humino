@@ -7,7 +7,7 @@
 // re-applying never stacks (no original-note store needed, unlike the SDK version).
 
 import { CONTROLS } from "./controls.js";
-import { BUILTIN_PRESETS, DEFAULT_PARAMS, process, type Mode, type Note, type Params } from "@humino/core";
+import { BUILTIN_PRESETS, DEFAULT_PARAMS, process, type Mode, type Note, type Params, type Scale } from "@humino/core";
 
 type ToolNote = {
   note_id?: number;
@@ -23,6 +23,7 @@ type ToolNote = {
 type ToolInput = {
   notes?: ToolNote[];
   clip?: { time_selection_end?: number; last_note_end?: number };
+  scale?: { scale_mode?: number; root_note?: number; scale_intervals?: number[] };
   seed?: number;
 };
 
@@ -44,6 +45,19 @@ const tempo = () => {
   }
 };
 
+/** Live's scale from the tool's context, else from the Live set; undefined when Scale Mode is off. */
+const scale = (input: ToolInput): Scale | undefined => {
+  const s = input.scale;
+  if (s?.scale_mode !== undefined) return s.scale_mode ? { root: s.root_note ?? 0, intervals: s.scale_intervals ?? [] } : undefined;
+  try {
+    const set = new LiveAPI("live_set");
+    if (!Number(set.get("scale_mode")[0])) return undefined;
+    return { root: Number(set.get("root_note")[0]), intervals: set.get("scale_intervals").map(Number) };
+  } catch {
+    return undefined; // no scale: Connect falls back to chromatic runs
+  }
+};
+
 const toCore = (n: ToolNote): Note => ({
   pitch: n.pitch,
   startTime: n.start_time,
@@ -59,17 +73,21 @@ const toCore = (n: ToolNote): Note => ({
 g.msg_dictionary = (input: ToolInput) => {
   const notes = input.notes ?? [];
   const clipEnd = input.clip?.time_selection_end ?? input.clip?.last_note_end;
+  const sc = params.connect.on ? scale(input) : undefined;
   const r = process(notes.map(toCore), params, {
     tempo: tempo(),
     seed: input.seed ?? 0,
     ...(clipEnd !== undefined && { clipEnd }),
+    ...(sc && { scale: sc }),
   });
   const out = notes.flatMap((src, i) => {
     if (r.dropped.has(i)) return [];
     const n = r.final[i]!;
     return [{ ...src, start_time: n.startTime, duration: n.duration, velocity: n.velocity ?? src.velocity }];
   });
-  outlet_dictionary(0, { notes: out });
+  // Connect's notes are new (no note_id); Live re-sends the originals on every apply, so they never pile up.
+  const added = r.added.map((n) => ({ pitch: n.pitch, start_time: n.startTime, duration: n.duration, velocity: n.velocity }));
+  outlet_dictionary(0, { notes: [...out, ...added] });
 };
 
 /** Re-run the transform with the current settings (Auto-like). */
@@ -92,9 +110,10 @@ g.mode = (i: number) => {
 g.preset = (i: number) => {
   const p = BUILTIN_PRESETS[i];
   if (!p) return;
-  const mode = params.mode;
+  const { mode, connect } = params;
   params = JSON.parse(JSON.stringify(p.params)) as Params;
   params.mode = p.mode === "any" ? mode : p.mode;
+  params.connect = connect; // presets have no Connect settings of their own
   showAll();
   changed();
 };

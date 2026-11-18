@@ -58,6 +58,8 @@ const d = DEFAULT_PARAMS;
 const valueof = (v: Record<string, unknown>) => ({ saved_attribute_attributes: { valueof: v } });
 const enumParam = (longname: string, short: string, names: string[], initial: number) =>
   valueof({ parameter_enum: names, parameter_longname: longname, parameter_shortname: short, parameter_type: 2, parameter_mmax: names.length - 1, parameter_initial: [initial], parameter_initial_enable: 1 });
+/** Live's Info View text for a control. */
+const info = (c: { label: string; tip: string }) => ({ annotation: c.tip, annotation_name: c.label });
 const tabBox = (id: string, rect: number[], px: number, py: number, hidden: boolean, param: object) =>
   boxes.push({
     id, maxclass: "live.tab", varname: id, numinlets: 1, numoutlets: 3, outlettype: ["", "", "float"], parameter_enable: 1,
@@ -70,7 +72,7 @@ wire("code", 2, "route", 0);
 obj("thispatcher", "thispatcher", 1, 2, { patching_rect: [200, 400, 80, 22] });
 wire("code", 3, "thispatcher", 0);
 
-tabBox("mode", [104, 2, 44, 15], 640, 10, false, enumParam("Mode", "Mode", ["Gtr", "Pno"], d.mode === "guitar" ? 0 : 1));
+tabBox("mode", [104, 2, 44, 15], 640, 10, false, { ...enumParam("Mode", "Mode", ["Gtr", "Pno"], d.mode === "guitar" ? 0 : 1), ...info({ label: "Mode", tip: "Guitar turns on Strum, Piano turns on Pedal." }) });
 obj("p-mode", "prepend mode", 1, 1, { patching_rect: [640, 34, 90, 22] });
 wire("mode", 0, "p-mode", 0);
 wire("p-mode", 0, "code", 0);
@@ -82,12 +84,13 @@ boxes.push({
   id: "preset", maxclass: "live.menu", varname: "preset", numinlets: 1, numoutlets: 3, outlettype: ["", "", "float"], parameter_enable: 1,
   patching_rect: [800, 10, 100, 15], presentation: 1, presentation_rect: [4, TAB_Y, 144, 15],
   ...enumParam("Preset", "Preset", BUILTIN_PRESETS.map((p) => p.name), 0),
+  ...info({ label: "Preset", tip: "Loads a built-in preset. Connect settings are kept." }),
 });
 obj("p-preset", "prepend preset", 1, 1, { patching_rect: [800, 34, 100, 22] });
 wire("preset", 0, "p-preset", 0);
 wire("p-preset", 0, "code", 0);
 
-tabBox("page", [4, 2, 96, 15], 920, 10, false, enumParam("Page", "Page", PAGES, 0));
+tabBox("page", [4, 2, 96, 15], 920, 10, false, { ...enumParam("Page", "Page", PAGES, 0), ...info({ label: "Page", tip: "Hum: humanize. Feel: swing and pedal. Str: strum. Con: connect." }) });
 obj("p-page", "prepend page", 1, 1, { patching_rect: [920, 34, 90, 22] });
 wire("page", 0, "p-page", 0);
 wire("p-page", 0, "code", 0);
@@ -96,11 +99,11 @@ CONTROLS.forEach((c, k) => {
   const px = 640 + (k % 8) * 70;
   const py = 80 + Math.floor(k / 8) * 120;
   const hidden = c.page !== 0;
-  if (c.kind === "tab") tabBox(c.key, [c.x, c.y, c.w, 15], px, py, hidden, enumParam(c.label, c.label, c.options, c.get(d)));
+  if (c.kind === "tab") tabBox(c.key, [c.x, c.y, c.w, 15], px, py, hidden, { ...enumParam(c.label, c.label, c.options, c.get(d)), ...info(c) });
   else
     boxes.push({
       id: c.key, maxclass: "live.dial", varname: c.key, numinlets: 1, numoutlets: 2, outlettype: ["", "float"], parameter_enable: 1,
-      patching_rect: [px, py, 44, 48], presentation: 1, presentation_rect: [c.x, c.y, 44, 48], ...(hidden && { hidden: 1 }),
+      patching_rect: [px, py, 44, 48], presentation: 1, presentation_rect: [c.x, c.y, 44, 48], ...(hidden && { hidden: 1 }), ...info(c),
       ...valueof({ parameter_longname: c.label, parameter_shortname: c.label, parameter_type: 0, parameter_mmin: 0, parameter_mmax: c.max, parameter_unitstyle: c.unit, parameter_initial: [c.get(d)], parameter_initial_enable: 1 }),
     });
   obj(`p-${c.key}`, `prepend param ${c.key}`, 1, 1, { patching_rect: [px, py + 56, 66, 22] });

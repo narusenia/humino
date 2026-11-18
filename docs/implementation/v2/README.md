@@ -4,11 +4,11 @@
 
 | # | 作業 | 状況 |
 |---|---|---|
-| 01 | core に Connect（経過音、Chromatic Run、前打音）。`Params.connect`、`Context.scale`、足したノートを `Result.notes` に入れる | 作業中 |
-| 02 | Extension：Song のスケールを渡す、ダイアログに Connect タブ、足したノートをスカイ色で描く | 未着手 |
-| 03 | MIDI Tools：Connect のページ、スケールの受け取り、足したノートの出力 | 未着手 |
+| 01 | core に Connect（経過音、Chromatic Run、前打音）。`Params.connect`、`Context.scale`、足したノートを `Result.notes` に入れる | 完了 |
+| 02 | Extension：Song のスケールを渡す、ダイアログに Connect タブ、足したノートをスカイ色で描く | 完了 |
+| 03 | MIDI Tools：Connect のページ、スケールの受け取り、足したノートの出力 | 完了 |
 | 04 | MIDI Tools：統合版に加えて、機能ごとに分けたデバイスも生成する | 未着手 |
-| 04b | MIDI Tools：つまみとタブに説明（Live の Info View に出る annotation）を付ける。文はダイアログの tip と共通にする | 未着手 |
+| 04b | MIDI Tools：つまみとタブに説明（Live の Info View に出る annotation）を付ける | 完了 |
 | 05 | Live で Connect を確かめる（両方の版） | 未着手 |
 | 06 | core にギターボイシング（チューニング、カポ、弦の番号）と、Strum を弦の順にする | 未着手 |
 | 07 | ボイシングの UI（Extension、MIDI Tools） | 未着手 |
