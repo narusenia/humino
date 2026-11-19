@@ -15,7 +15,7 @@ humino は MIDI クリップのノートを書き換えるヒューマナイザ�
 2. クリップのノートを読み、保存してある元のノートと照合する（ADR-0002）
 3. 処理対象を決める（ADR-0007）
 4. ギターモードでボイシングがオンなら、先に和音をギターの形に置き換える（v2、ADR-0016）
-5. パイプラインを通す（ADR-0004）：Groove → Humanize → Strum → 疑似ペダル → Connect（v2）
+5. パイプラインを通す（ADR-0004）：Groove → Humanize → Strum → 疑似ペダル → Connect（v2）。Groove、Humanize、Strum はそれぞれ on / off を持ち（初期値 on）、off の処理は飛ばす。前の版で保存した設定は on として読む
 6. `withinTransaction` の中でクリップのノートを書き換え、元のノートと出力のハッシュを保存する
 
 パイプラインは `packages/core` の純粋関数で、`(notes, params, context) => notes` の形にする。`context` はテンポ、拍子、スケール、シード値を持つ。ダイアログのプレビューも同じ関数を呼ぶ。
@@ -47,6 +47,13 @@ humino は MIDI クリップのノートを書き換えるヒューマナイザ�
 velocity の初期値は拍のアクセントにする：1 拍目 +8、3 拍目 +4、2・4 拍目 0、8 分の裏 −4、16 分の裏 −8。
 
 ノートの開始位置から最も近いステップを求め、そのステップの値を当てる。
+
+### 別のクリップからの抽出（v2）
+
+- 右クリックの `humino: Extract Groove` で、そのクリップのノリを抜き出して `storageDirectory/groove.json` に保存する。保存するのは最後に抜き出した 1 つだけで、クリップ名と 3 連グリッドかどうかも残す
+- 和音ごとに最も近いステップを求め、ステップごとに平均する。timing はグリッドからのずれ（ステップ長に対する %、−50〜+50）、velocity は和音の平均ベロシティとクリップ全体の平均の差（−40〜+40）。音が無いステップは 0
+- 和音の判定には、前回使った設定（`last.json`）の chord window を使う
+- ダイアログの Groove タブの「『クリップ名』の Groove を読み込む」で、timing と velocity の表を置き換える。swing は変えない。抜き出したクリップと 3 連グリッドかどうかが違うときは、注意を出したうえで読み込む
 
 ## Humanize
 
@@ -158,7 +165,7 @@ Drift は時間に対する平均回帰ランダムウォーク（Ornstein–Uhl
 
 ### 右クリックメニュー（MidiClip）
 
-`humino…`、`humino: Re-apply`、`humino: Strum Down`、`humino: Strum Up`
+`humino…`、`humino: Re-apply`、`humino: Strum Down`、`humino: Strum Up`、`humino: Extract Groove`（v2）
 
 ### ダイアログ（960 × 720 px）
 
@@ -168,7 +175,7 @@ Drift は時間に対する平均回帰ランダムウォーク（Ornstein–Uhl
 ├──────────────────────────────────────────────────────────┤
 │   プレビュー（ミニピアノロール、Drift の曲線）              │
 ├──────────────────────────────────────────────────────────┤
-│  groove   humanize   strum   connect                      │ タブ
+│  ● groove   ● humanize   ● strum   connect                │ タブ
 ├──────────────────────────────────────────────────────────┤
 │  drift     jitter     legato     vel ±     chord bal      │ パラメータ
 │  12.0ms    4.0ms      60%        8         40%            │
@@ -179,7 +186,9 @@ Drift は時間に対する平均回帰ランダムウォーク（Ornstein–Uhl
 
 - パラメータは「ラベル（小）＋ 数字（大）＋ 小さなグラフ」。数字の上下ドラッグで変え、Shift で細かく、ダブルクリックで初期値に戻す
 - Groove タブはパラメータ列の代わりに 16 本のステップ表を置く（上半分が timing、下半分が velocity）
-- モードで使えないタブやパラメータは隠さずグレーにする（ギターモードの pedal、ピアノモードの strum）
+- タブ名の左の丸ボタンで Groove、Humanize、Strum を on / off する（Strum はギターモードだけ）。off のタブは名前に取り消し線を引き、パラメータを薄くする。値は残るので、on に戻せば元の設定で効く。Connect のタブは 3 種類がすべて off のとき薄くする
+- モードで使わないパラメータは隠す（ギターモードの spread と pedal、ピアノモードの strum とボイシング）。ピアノモードでは Strum タブを「pedal」と表示し、ペダルの設定だけを出す
+- Connect タブは 3 種類を同じ列にそろえて並べ、velocity をどの行でも右端に置く
 - 詳細な設定は Advanced として折りたたむ
 - ダイアログ内の変更（パラメータ、プリセット、シード値、手での変更）は ⌘Z / Ctrl+Z で取り消し、⇧⌘Z / Ctrl+Y でやり直す。マウスを離した時点を 1 操作として数える
 - ツールチップの説明文だけ、`Environment.language` が `"JA"` なら日本語
@@ -193,7 +202,7 @@ Drift は時間に対する平均回帰ランダムウォーク（Ornstein–Uhl
 - ノートのクリックで和音を選択（Shift で追加）、空いた所のドラッグで範囲選択、空いた所のクリックで選択解除。ダイアログでの選択は、クリップ側の選択より優先して Apply に渡す
 - ⌥ を押しながらノートをドラッグすると、そのノート（選択中なら選択したノートすべて）の位置を ms 単位でずらす。ベロシティのレーンを上下にドラッグすると、選択中のノート（なければ近くの和音）のベロシティを増減する
 - ノートにカーソルを合わせると、処理ごとのずれ（ms）、ベロシティの変化、手での変更を表示する
-- プレビューの下に選択中の和音の編集欄を置く：Lock / Unlock、stroke（auto / ↓ / ↑）、speed、up skip、Reset、Deselect
+- プレビューの下に選択中の和音の編集欄を置く：Lock / Unlock、stroke（auto / ↓ / ↑）、speed、up skip、Reset、Deselect。stroke、speed、up skip はギターモードだけ出し、Strum が off のときは押せない
 
 ### 手での変更（Overrides）
 

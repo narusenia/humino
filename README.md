@@ -19,10 +19,11 @@ Right-click a MIDI clip and choose:
 
 | Menu | What it does |
 |---|---|
-| `humino…` | Opens the dialog. Set things up in the Groove, Humanize, Strum and Connect tabs, compare before and after in the preview, then apply |
+| `humino…` | Opens the dialog. Set things up in the Groove, Humanize, Strum and Connect tabs, compare before and after in the preview, then apply. The dot left of a tab name turns that stage on or off |
 | `humino: Re-apply` | Applies the last settings again with a new seed |
 | `humino: Strum Down` | Makes the selected chords downstrokes |
 | `humino: Strum Up` | Makes the selected chords upstrokes |
+| `humino: Extract Groove` | Takes the feel of the clip (per-step timing and velocity offsets) and keeps it; open the dialog on another clip and load it in the Groove tab |
 
 With notes selected, only those notes and the rest of their chords are processed; otherwise the whole clip.
 
@@ -50,7 +51,8 @@ There is also one device per stage: `humino Guitar Voicing`, `humino Humanize`, 
 - **Connect**: passing tones, runs (1–6 notes, through the scale or by semitones) and grace notes between chords. Passing tones and in-scale steps need Live's Scale Mode.
 - **Chord names** in the dialog's preview, with the degree (I, vi, V7…) when Live's Scale Mode is on. The chord window in the header sets how close together notes must start to count as one chord.
 - **Guitar voicing** (guitar): rewrites each chord as a shape a guitarist can play, one note per string (standard or Drop D, capo 0–7), and Strum then plays it string by string. In the Strum tab of the dialog, on the Str page, and as its own device.
-- Extract a groove from another clip (planned).
+- **Groove extraction**: take the per-step timing and velocity offsets from a played clip and load them into another clip's groove table (Extension only).
+- **Stage on / off**: switch Groove, Humanize or Strum off without losing its values (Extension).
 
 ## Development
 
