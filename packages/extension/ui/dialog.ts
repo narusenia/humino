@@ -135,12 +135,6 @@ const onOff: [boolean, string][] = [
   [false, "off"],
   [true, "on"],
 ];
-/** Each stage's on / off, first on its tab. */
-const SWITCH: Record<"groove" | "humanize" | "strum", Def> = {
-  groove: { kind: "choice", section: "groove", key: "on", label: "groove", options: onOff, tip: ["Applies the step table and swing", "ステップ表と Swing をかける"] },
-  humanize: { kind: "choice", section: "humanize", key: "on", label: "humanize", options: onOff, tip: ["Applies timing, velocity and length changes", "タイミング、ベロシティ、長さの揺れをかける"] },
-  strum: { kind: "choice", section: "strum", key: "on", label: "strum", options: onOff, mode: "guitar", tip: ["Spreads chords into strokes (guitar)", "和音をストロークに広げる（ギター）"] },
-};
 /** Whether the tab's stage does anything, for dimming its tab. */
 const stageOn = (t: Tab) =>
   t === "connect"
@@ -248,7 +242,9 @@ function choiceControl(d: ChoiceDef) {
 
 const control = (d: Def) => (d.kind === "num" ? numControl(d) : choiceControl(d));
 
-function group(defs: Def[]) {
+function group(all: Def[]) {
+  // controls for the other mode are hidden, not greyed: switching mode re-renders
+  const defs = all.filter(enabled);
   const main = defs.filter((d) => !d.advanced);
   const adv = defs.filter((d) => d.advanced);
   const out: HTMLElement[] = [h("div", { className: "row" }, ...main.map(control))];
@@ -358,16 +354,29 @@ const STAGE_COLOR: Record<Tab, string> = {
   connect: "--stage-connect",
 };
 
+/** Stages with their own on / off; Strum only in guitar mode (piano has the pedal's off). */
+const switchable = (t: Tab): t is "groove" | "humanize" | "strum" => t === "groove" || t === "humanize" || (t === "strum" && params.mode === "guitar");
+
 function renderTabs() {
   const nav = $("tabs");
   nav.replaceChildren(
     ...TABS.map(([id, label]) => {
-      const btn = h("button", { onclick: () => ((tab = id), renderTabs(), renderParams(), schedule()) }, label);
+      const name = id === "strum" && params.mode === "piano" ? "pedal" : label;
+      const btn = h("button", { className: "name", onclick: () => ((tab = id), renderTabs(), renderParams(), schedule()) }, name);
       btn.setAttribute("role", "tab");
       btn.setAttribute("aria-selected", String(id === tab));
-      btn.style.setProperty("--tab-color", `var(${STAGE_COLOR[id]})`);
-      btn.classList.toggle("off", !stageOn(id));
-      return btn;
+      const wrap = h("div", { className: `tab${stageOn(id) ? "" : " off"}` });
+      wrap.style.setProperty("--tab-color", `var(${STAGE_COLOR[id]})`);
+      if (switchable(id)) {
+        const st = params[id];
+        const power = h("button", { className: "power", onclick: () => ((st.on = !st.on), renderParams(), renderSelbar(), edited()) });
+        power.setAttribute("aria-pressed", String(st.on));
+        power.setAttribute("aria-label", `${name} on / off`);
+        power.title = ja ? `${name} をオン / オフ` : `Turn ${name} on or off`;
+        wrap.append(power);
+      }
+      wrap.append(btn);
+      return wrap;
     }),
   );
 }
@@ -377,17 +386,24 @@ function renderParams() {
   renderTabs();
   const main = $("params");
   main.style.setProperty("--section", `var(${STAGE_COLOR[tab]})`);
-  if (tab === "groove") main.replaceChildren(h("div", { className: "row" }, control(SWITCH.groove)), grooveTable());
-  else if (tab === "humanize") main.replaceChildren(...group([SWITCH.humanize, ...HUMANIZE]));
+  // a switched-off stage keeps its controls editable, just quieter
+  main.classList.toggle("off", switchable(tab) && !params[tab].on);
+  if (tab === "groove") main.replaceChildren(grooveTable());
+  else if (tab === "humanize") main.replaceChildren(...group(HUMANIZE));
   else if (tab === "connect") main.replaceChildren(...connectLanes());
-  else main.replaceChildren(...group([SWITCH.strum, ...STRUM]), h("div", { className: "lane" }, ...VOICING.map(control)), fixedRow());
+  else if (params.mode === "piano") main.replaceChildren(...group(STRUM), fixedRow()); // only the pedal is left
+  else {
+    const [row, ...adv] = group(STRUM);
+    main.replaceChildren(row!, h("div", { className: "lane" }, ...VOICING.map(control)), fixedRow(), ...adv);
+  }
 }
 
 /** Connect in three lanes, one per kind: chromatic run, passing tone, grace notes. */
 function connectLanes() {
   const pick = (...keys: string[]) => keys.map((k) => control(CONNECT.find((c) => c.key === k)!));
   // the first control of each lane is its on / off, labelled with the kind
-  const lane = (...items: HTMLElement[]) => h("div", { className: "lane" }, ...items);
+  const lane = (...items: HTMLElement[]) => h("div", { className: "lane grid" }, ...items);
+  const gap = () => h("div", {});
   const s = input.scale;
   const scale = h(
     "div",
@@ -397,7 +413,7 @@ function connectLanes() {
   );
   return [
     lane(...pick("chromaticOn", "chromatic", "steps", "runDirection", "runScale", "chromaticVelocity")),
-    lane(...pick("passingOn", "passing", "passingVelocity"), scale),
+    lane(...pick("passingOn", "passing"), gap(), scale, gap(), ...pick("passingVelocity")),
     lane(...pick("graceOn", "grace", "graceSteps", "graceLength", "graceScale", "graceVelocity")),
   ];
 }
@@ -423,6 +439,7 @@ function renderMode() {
       (v) => {
         params.mode = v as Mode;
         renderParams();
+        renderSelbar();
         edited();
       },
     ),
@@ -961,7 +978,7 @@ function draw() {
 
   // stroke arrows on the strum tab
   chordHits = [];
-  if (tab === "strum" && params.mode === "guitar") {
+  if (tab === "strum" && params.mode === "guitar" && params.strum.on) {
     const p = { ...params.strum, chords: overrides.chords };
     const motion = resolveMotion(r.analysis, p);
     let lastX = -Infinity;
@@ -1065,6 +1082,8 @@ function renderSelbar() {
   const keys = groups.filter((g) => g.idx.length >= 2).map((g) => chordKey(g.start));
   const locked = idx.every((i) => overrides.notes[noteKey(base[i]!)]?.lock);
   const guitar = params.mode === "guitar";
+  // per-chord strum edits do nothing with Strum off or without a chord
+  const strummable = guitar && params.strum.on && keys.length > 0;
 
   const setChords = (patch: (cur: LooseChord) => LooseChord) => {
     const chords = { ...overrides.chords };
@@ -1102,7 +1121,7 @@ function renderSelbar() {
       value.addEventListener("pointerup", () => (value.removeEventListener("pointermove", move), renderSelbar(), renderParams()), { once: true });
     });
     value.addEventListener("dblclick", () => setChords((c) => ({ ...c, [field]: undefined })));
-    return h("span", { className: `field${guitar && keys.length ? "" : " disabled"}` }, h("span", { className: "label" }, label), value);
+    return h("span", { className: `field${strummable ? "" : " disabled"}` }, h("span", { className: "label" }, label), value);
   };
 
   bar.replaceChildren(
@@ -1115,8 +1134,9 @@ function renderSelbar() {
         edited();
       },
     }, locked ? "Unlock" : "Lock"),
-    h("span", { className: "sep" }),
-    h("span", { className: `field${guitar && keys.length ? "" : " disabled"}` },
+    // the strum fields only exist in guitar mode
+    ...(guitar ? [h("span", { className: "sep" }),
+    h("span", { className: `field${strummable ? "" : " disabled"}` },
       h("span", { className: "label" }, "stroke"),
       segmented(
         [["auto", "auto"], ["down", "↓"], ["up", "↑"]],
@@ -1125,11 +1145,11 @@ function renderSelbar() {
           return dirs.every((d) => d === dirs[0]) ? dirs[0] : "mixed";
         },
         (v) => setChords((c) => ({ ...c, direction: v === "auto" ? undefined : (v as "down" | "up") })),
-        !(guitar && keys.length),
+        !strummable,
       ),
     ),
     chordNumber("speed", "speed", params.strum.downSpeed, 120, "ms"),
-    chordNumber("up skip", "upSkip", params.strum.upSkip, 3, ""),
+    chordNumber("up skip", "upSkip", params.strum.upSkip, 3, "")] : []),
     h("span", { className: "spacer" }),
     h("button", {
       onclick: () => {

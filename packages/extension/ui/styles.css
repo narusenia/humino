@@ -116,17 +116,15 @@ input {
 
 /* Tabs */
 .tabs { display: flex; gap: 24px; align-items: stretch; padding: 0 16px; border-bottom: 1px solid var(--line); }
-.tabs button {
-  background: none;
-  border: none;
-  border-radius: 0;
-  padding: 0 2px;
-  color: var(--text-dim);
-  border-bottom: 2px solid transparent;
-}
-.tabs button.off { opacity: 0.45; text-decoration: line-through; }
-.tabs button[aria-selected="true"] { color: var(--text); font-weight: 450; border-bottom-color: var(--tab-color, var(--accent)); }
-.tabs button:disabled { color: var(--muted); cursor: default; }
+.tabs .tab { display: flex; align-items: center; gap: 5px; border-bottom: 2px solid transparent; }
+.tabs .tab:has(.name[aria-selected="true"]) { border-bottom-color: var(--tab-color, var(--accent)); }
+.tabs .name { background: none; border: none; border-radius: 0; padding: 0 2px; color: var(--text-dim); }
+.tabs .name[aria-selected="true"] { color: var(--text); font-weight: 450; }
+.tabs .tab.off .name { opacity: 0.45; text-decoration: line-through; }
+/* power button: a filled dot in the stage's colour when on */
+.tabs .power { width: 16px; height: 16px; padding: 0; display: grid; place-items: center; background: none; border: none; cursor: pointer; }
+.tabs .power::after { content: ""; width: 8px; height: 8px; border-radius: 50%; border: 1.5px solid var(--text-dim); box-sizing: border-box; }
+.tabs .power[aria-pressed="true"]::after { background: var(--tab-color); border-color: var(--tab-color); }
 
 /* Parameters */
 .params { padding: 14px 16px 10px; overflow-y: auto; scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
@@ -175,7 +173,9 @@ details.advanced summary { cursor: pointer; color: var(--text-dim); font-size: 1
 .lane { display: flex; flex-wrap: wrap; gap: 8px 22px; align-items: flex-start; }
 .lane > .param:first-child { width: 104px; }
 .lane > .param:first-child .segmented button { flex: 1; }
-.lane + .lane { margin-top: 5px; padding-top: 5px; border-top: 1px solid var(--line); }
+.lane.grid { display: grid; grid-template-columns: 104px 104px 104px 190px 170px 104px; }
+.params.off > :not(.lane):not(.fixed) { opacity: 0.45; } /* voicing and hand edits still apply */
+.row + .lane, .lane + .lane { margin-top: 5px; padding-top: 5px; border-top: 1px solid var(--line); }
 .scale-name { margin-top: 8px; font-size: 15px; color: var(--text); white-space: nowrap; }
 .fixed { display: flex; align-items: center; gap: 10px; margin-top: 14px; }
 .fixed button { padding: 3px 10px; font-size: 12px; }
