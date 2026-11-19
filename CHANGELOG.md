@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.3.0 (2026-11-19)
+
+- Connect: passing tones, runs into the next bass note (1–6 notes, through Live's scale or by semitones) and grace notes climbing into the top note. Each kind has its own switch, chance and velocity, and stays off until you switch it on. Passing tones and in-scale steps need Live's Scale Mode
+- Guitar voicing (guitar mode): rewrites each chord as a playable shape, one note per string (standard or Drop D, capo 0–7), and Strum plays it string by string
+- Groove extraction: right-click a played clip → `humino: Extract Groove`, then load its per-step timing and velocity in another clip's Groove tab
+- Chord window: notes starting within 0–50 ms of each other count as one chord, so slightly off-grid chords are still chords
+- Dialog: chord names and degrees over the preview, a piano keyboard beside the rows, an on / off dot for Groove, Humanize and Strum on each tab; controls the current mode does not use are hidden
+- MIDI Tools: every page is drawn as a picture of an example phrase with draggable values, plus one device per stage (`humino Guitar Voicing`, `humino Humanize`, `humino Swing`, `humino Strum`, `humino Pedal`, `humino Connect`) in `humino-midi-tools.zip`
+- Settings saved by 0.2.0 get the new fields filled with defaults
+
 ## 0.2.0 (2026-11-19)
 
 - MIDI Tools version: `humino.amxd`, a MIDI Transformation for Live 12 Suite. Works on the notes selected in the piano roll and re-applies as you turn its dials. Three pages (Hum, Feel, Strum) cover every parameter except the 16-step groove table

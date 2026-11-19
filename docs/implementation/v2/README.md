@@ -16,4 +16,4 @@
 | 06 | core にギターボイシング（チューニング、カポ、弦の番号）と、Strum を弦の順にする | 完了 |
 | 07 | ボイシングの UI（Extension の Strum タブ、MIDI Tools の Str ページと humino Guitar Voicing） | 完了 |
 | 08 | Extension：別クリップから Groove を抽出してステップ表に入れる | 完了 |
-| 09 | Live で確かめてリリース | 未着手 |
+| 09 | Live で確かめてリリース（v0.3.0） | 完了 |
