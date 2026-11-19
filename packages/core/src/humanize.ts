@@ -7,6 +7,8 @@ import { clampVelocity, DEFAULT_VELOCITY, MIN_DURATION, type Context, type Note 
 type Rng = ReturnType<typeof createRng>;
 
 export type HumanizeParams = {
+  /** Off skips the stage; on by default, so settings saved before the switch keep working. */
+  on: boolean;
   /** ms, size of the slow drift (stationary standard deviation). */
   drift: number;
   /** 0..1, how fast the drift returns to the grid (time constant 8.5 beats at 0, 0.5 beats at 1). */
@@ -28,6 +30,7 @@ export type HumanizeParams = {
 };
 
 export const DEFAULT_HUMANIZE: HumanizeParams = {
+  on: true,
   drift: 8,
   driftReturn: 0.3,
   jitter: 4,

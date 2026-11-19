@@ -135,6 +135,20 @@ const onOff: [boolean, string][] = [
   [false, "off"],
   [true, "on"],
 ];
+/** Each stage's on / off, first on its tab. */
+const SWITCH: Record<"groove" | "humanize" | "strum", Def> = {
+  groove: { kind: "choice", section: "groove", key: "on", label: "groove", options: onOff, tip: ["Applies the step table and swing", "ステップ表と Swing をかける"] },
+  humanize: { kind: "choice", section: "humanize", key: "on", label: "humanize", options: onOff, tip: ["Applies timing, velocity and length changes", "タイミング、ベロシティ、長さの揺れをかける"] },
+  strum: { kind: "choice", section: "strum", key: "on", label: "strum", options: onOff, mode: "guitar", tip: ["Spreads chords into strokes (guitar)", "和音をストロークに広げる（ギター）"] },
+};
+/** Whether the tab's stage does anything, for dimming its tab. */
+const stageOn = (t: Tab) =>
+  t === "connect"
+    ? params.connect.chromaticOn || params.connect.passingOn || params.connect.graceOn
+    : t === "strum"
+      ? params.mode === "guitar" ? params.strum.on : params.pedal !== "off"
+      : params[t].on;
+
 const CONNECT: Def[] = [
   { kind: "choice", section: "connect", key: "chromaticOn", label: "run", options: onOff, tip: ["Steps into the next bass note", "次のベースへ 1 音ずつ近づく音を足す"] },
   { kind: "num", section: "connect", key: "chromatic", label: "chance", min: 0, max: 100, step: 1, unit: "%", tip: ["Chance per chord change", "和音が変わるごとに入れる確率"] },
@@ -169,6 +183,7 @@ function edited() {
   presetIndex = -1;
   isInit = false;
   renderPresetName();
+  renderTabs();
   schedule();
 }
 
@@ -351,6 +366,7 @@ function renderTabs() {
       btn.setAttribute("role", "tab");
       btn.setAttribute("aria-selected", String(id === tab));
       btn.style.setProperty("--tab-color", `var(${STAGE_COLOR[id]})`);
+      btn.classList.toggle("off", !stageOn(id));
       return btn;
     }),
   );
@@ -358,12 +374,13 @@ function renderTabs() {
 
 function renderParams() {
   renderChordWindow();
+  renderTabs();
   const main = $("params");
   main.style.setProperty("--section", `var(${STAGE_COLOR[tab]})`);
-  if (tab === "groove") main.replaceChildren(grooveTable());
-  else if (tab === "humanize") main.replaceChildren(...group(HUMANIZE));
+  if (tab === "groove") main.replaceChildren(h("div", { className: "row" }, control(SWITCH.groove)), grooveTable());
+  else if (tab === "humanize") main.replaceChildren(...group([SWITCH.humanize, ...HUMANIZE]));
   else if (tab === "connect") main.replaceChildren(...connectLanes());
-  else main.replaceChildren(...group(STRUM), h("div", { className: "lane" }, ...VOICING.map(control)), fixedRow());
+  else main.replaceChildren(...group([SWITCH.strum, ...STRUM]), h("div", { className: "lane" }, ...VOICING.map(control)), fixedRow());
 }
 
 /** Connect in three lanes, one per kind: chromatic run, passing tone, grace notes. */

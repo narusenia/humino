@@ -8,6 +8,8 @@ type Rng = ReturnType<typeof createRng>;
 export type Direction = "down" | "up";
 
 export type StrumParams = {
+  /** Off skips the stage; on by default, so settings saved before the switch keep working. */
+  on: boolean;
   direction: "auto" | "down";
   motion: "auto" | 8 | 16;
   /** ms from first to last string. */
@@ -34,6 +36,7 @@ export type ChordOverride = {
 };
 
 export const DEFAULT_STRUM: StrumParams = {
+  on: true,
   direction: "auto",
   motion: "auto",
   downSpeed: 30,

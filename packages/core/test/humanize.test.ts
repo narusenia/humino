@@ -16,7 +16,7 @@ const run = (notes: Note[], p: HumanizeParams = DEFAULT_HUMANIZE, seed = 7) => {
   return work;
 };
 
-const zero: HumanizeParams = { drift: 0, driftReturn: 0.3, jitter: 0, spread: 0, beatWeight: 0, velJitter: 0, chordBalance: 0, legato: 0, lengthJitter: 0 };
+const zero: HumanizeParams = { on: true, drift: 0, driftReturn: 0.3, jitter: 0, spread: 0, beatWeight: 0, velJitter: 0, chordBalance: 0, legato: 0, lengthJitter: 0 };
 
 describe("humanize", () => {
   it("is deterministic per seed", () => {

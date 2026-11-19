@@ -4,6 +4,8 @@ import { analyze, metricLevel, type Analysis } from "./analysis.js";
 import { clampVelocity, DEFAULT_VELOCITY, type Note } from "./types.js";
 
 export type GrooveParams = {
+  /** Off skips the stage; on by default, so settings saved before the switch keep working. */
+  on: boolean;
   /** Per-step timing offset, % of a step (-50..50). 16 entries; triplet clips use the first 12. */
   timing: number[];
   /** Per-step velocity offset (-40..40). */
@@ -20,6 +22,7 @@ export const defaultGrooveVelocity = () =>
   Array.from({ length: 16 }, (_, s) => LEVEL_ACCENT[metricLevel(s / 4, 4, false)]!);
 
 export const DEFAULT_GROOVE: GrooveParams = {
+  on: true,
   timing: new Array(16).fill(0),
   velocity: defaultGrooveVelocity(),
   swing: 0,

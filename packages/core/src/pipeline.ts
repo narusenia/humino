@@ -109,14 +109,14 @@ export function process(notes: readonly Note[], p: Params, ctx: Context, ov: Ove
   const work = notes.map((n) => ({ ...n }));
   const snap = () => work.map((n) => ({ ...n }));
 
-  applyGroove(work, a, target, p.groove);
+  if (p.groove.on) applyGroove(work, a, target, p.groove);
   const groove = snap();
   // Strum re-spaces chord notes from the lowest one, so spread would only nudge whole chords in guitar mode.
   const humanize_ = p.mode === "guitar" ? { ...p.humanize, spread: 0 } : p.humanize;
-  const drift = applyHumanize(work, a, target, humanize_, ctx, stageRng(ctx.seed, 1));
+  const drift = p.humanize.on ? applyHumanize(work, a, target, humanize_, ctx, stageRng(ctx.seed, 1)) : [];
   const humanize = snap();
   const dropped =
-    p.mode === "guitar"
+    p.mode === "guitar" && p.strum.on
       ? applyStrum(work, a, target, { ...p.strum, chords: { ...p.strum.chords, ...ov.chords } }, ctx, stageRng(ctx.seed, 2))
       : new Set<number>();
   const strum = snap();

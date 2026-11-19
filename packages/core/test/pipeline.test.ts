@@ -25,6 +25,14 @@ describe("process", () => {
     expect(process(chords(), piano, ctx).notes).toHaveLength(24);
   });
 
+  it("a stage switched off leaves its snapshot as the stage before it", () => {
+    const off: Params = { ...GUITAR, groove: { ...GUITAR.groove, on: false }, humanize: { ...GUITAR.humanize, on: false }, strum: { ...GUITAR.strum, on: false } };
+    const r = process(chords(), off, ctx);
+    expect(r.snapshots.strum).toEqual(chords());
+    expect(r.notes).toHaveLength(24); // no upstroke skips without strum
+    expect(r.drift).toEqual([]);
+  });
+
   it("changing strum settings leaves the humanize stage unchanged", () => {
     const a = process(chords(), GUITAR, ctx);
     const b = process(chords(), { ...GUITAR, strum: { ...DEFAULT_PARAMS.strum, downSpeed: 80 } }, ctx);

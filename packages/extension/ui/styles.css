@@ -124,6 +124,7 @@ input {
   color: var(--text-dim);
   border-bottom: 2px solid transparent;
 }
+.tabs button.off { opacity: 0.45; text-decoration: line-through; }
 .tabs button[aria-selected="true"] { color: var(--text); font-weight: 450; border-bottom-color: var(--tab-color, var(--accent)); }
 .tabs button:disabled { color: var(--muted); cursor: default; }
 
